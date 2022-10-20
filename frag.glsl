@@ -5,7 +5,15 @@
 //#define flopineshade 1 //noexport
 #define PI 3.14159265359
 #define HALFPI 1.5707963268
-#define fight(a,b) if(b.x<a.x)a=b; // union of 2 distance functions where x is distance and y is material id
+#define fight(a,b) if(b.x<a.x)a=b; // union of 2 distance function resuls where x is distance and y is material id
+#define BLK 0
+#define RED 1
+#define BLU 2
+#define GRN 3
+#define YLW 4
+#define WHI 5
+#define ORG 6
+#define SHA 7
 layout (location=0) uniform vec4 fpar[2];
 layout (location=2) uniform vec4 debug[2]; //noexport
 layout (location=4) uniform sampler2D tex;
@@ -26,6 +34,10 @@ float rand(vec2 p){return fract(sin(dot(p.xy,vec2(12.9898,78.233)))*43758.5453);
 
 mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 
+float unit = 24;
+float spacing = unit;
+vec3 offs = vec3(0., spacing, -spacing);
+
 float su(float d1, float d2, float k)
 {
 	float h = clamp(.5+.5*(d2-d1)/k,0.,1.);
@@ -37,11 +49,34 @@ vec3 hitPosition = vec3(0);
 vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec2 rot)
 {
 	p -= pos;
+	rot *= HALFPI;
+	p.xy *= rot2(rot.x);
+	p.yz *= rot2(rot.y);
 	vec2	mc = vec2(length(max(abs(p) - vec3(10.), 0.)) - 2, 0),
-		tc = vec2(length(max(abs(p + vec3(0., 0., 2.02)) - vec3(10), 0.)), materialTop);
+		tc = vec2(length(max(abs(p + vec3(0., 0., 2.02)) - vec3(10), 0.)), materialTop),
+		sh = vec2(max(length(p.xy)-unit/4., length(max(abs(p-vec3(0.,0.,unit*.375)) - vec3(unit*.75), 0.))), 7);
 	
 	fight(mc, tc);
+	mc.x = max(mc.x, -(length(p+vec3(0.,0.,-unit))-unit*1.2));
+	fight(mc, sh);
 	return mc;
+}
+
+vec2 center(vec3 p)
+{
+	vec2	bab = centerCube(p, RED, offs.xxz, vec2(0)),
+		bba = centerCube(p, YLW, offs.zxx, vec2(1, 1)),
+		abb = centerCube(p, BLU, offs.xyx, vec2(0, 1)),
+		bbc = centerCube(p, WHI, offs.yxx, vec2(-1, 1)),
+		ccb = centerCube(p, GRN, offs.xzx, vec2(0, -1)),
+		bcb = centerCube(p, ORG, offs.xxy, vec2(0, -2));
+
+	fight(bab, bba);
+	fight(bab, abb);
+	fight(bab, bbc);
+	fight(bab, ccb);
+	fight(bab, bcb);
+	return bab;
 }
 
 vec2 twoSidedCube(vec3 p, int materialTop, int materialFront)
@@ -82,6 +117,7 @@ vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, ve
 		bitpla2 = dot(cubepos, normalize(vec3(0, 1, -1))) - 4,
 		bitpla3 = dot(cubepos, normalize(vec3(1, 1, 0))) - 4,
 		bit = max(bitpla3, max(bitpla2, max(bitpla1, bitcube)));
+	bit = max(bitcube, length(p+vec3(unit,unit,-unit))-unit*1.18);
 	mc.x = min(mc.x, bit);
 	return mc;
 }
@@ -91,19 +127,16 @@ vec2 rotpos(vec2 res, vec3 pos, float b)
 	return res;
 }
 
-float unit = 24. * 2.;
-vec3 offs = vec3(0., unit, -unit);
-
 vec2 cube(vec3 p)
 {
-	vec2	aaa = cornerCube(p, 1, 2, 3, offs.zyx, vec2(0., 1.)),
-		aab = middleCube(p, 1, 2, offs.xyx, vec2(0.)),
-		aac = cornerCube(p, 1, 2, 3, offs.yyx, vec2(0.)),
-		bab = centerCube(p, 1, offs.xxx, vec2(0.));
+	vec2	aaa = cornerCube(p, 1, 2, 3, offs.zyz, vec2(0, 1)),
+		aab = middleCube(p, 1, 2, offs.xyz, vec2(0)),
+		aac = cornerCube(p, 1, 2, 3, offs.yyz, vec2(0)),
+		centr = center(p);
 
 	fight(aaa, aab);
 	fight(aaa, aac);
-	fight(aaa, bab);
+	fight(aaa, centr);
 	return aaa;
 }
 
@@ -192,12 +225,20 @@ void main()
 		float material = result.w;
 		if (material == 0) {
 			shade = vec3(.03);
-		} else if (material == 1) {
+		} else if (material == RED) {
 			shade = vec3(1, 0, 0);
-		} else if (material == 2) {
+		} else if (material == BLU) {
 			shade = vec3(0, 0, 1);
-		} else if (material == 3) {
+		} else if (material == GRN) {
 			shade = vec3(0, 1, 0);
+		} else if (material == YLW) {
+			shade = vec3(1, 1, 0);
+		} else if (material == WHI) {
+			shade = vec3(1);
+		} else if (material == ORG) {
+			shade = vec3(1., .3, .0);
+		} else if (material == SHA) {
+			shade = vec3(.9, .9, .8);
 		}
 		vec3 normal = norm(hitPosition, result.y);
 		// coloring magic from https://www.shadertoy.com/view/sdVczz
