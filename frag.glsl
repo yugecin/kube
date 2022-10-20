@@ -75,23 +75,6 @@ vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec3 rot)
 	return mc.x < sh.x ? mc : sh;
 }
 
-vec2 center(vec3 p)
-{
-	vec2	bab = centerCube(p, RED, offs.xxz, rot.xxx),
-		bba = centerCube(p, YLW, offs.zxx, rot.yyx),
-		abb = centerCube(p, BLU, offs.xyx, rot.xyx),
-		bbc = centerCube(p, WHI, offs.yxx, rot.zyx),
-		ccb = centerCube(p, GRN, offs.xzx, rot.xzx),
-		bcb = centerCube(p, ORG, offs.xxy, rot.xwx);
-
-	fight(bab, bba);
-	fight(bab, abb);
-	fight(bab, bbc);
-	fight(bab, ccb);
-	fight(bab, bcb);
-	return bab;
-}
-
 vec2 middleCube(vec3 p, int materialTop, int materialFront, vec3 pos, vec3 rot)
 {
 	p -= pos;
@@ -128,44 +111,54 @@ vec2 map(vec3 p)
 		aab = middleCube(p, RED, BLU, offs.xyz, rot.xxx),
 		aac = cornerCube(p, RED, BLU, WHI, offs.yyz, rot.xxx),
 		baa = middleCube(p, RED, YLW, offs.zxz, rot.yxx),
+		bab = centerCube(p, RED, offs.xxz, rot.xxx),
 		bac = middleCube(p, RED, WHI, offs.yxz, rot.zxx),
 		caa = cornerCube(p, RED, GRN, YLW, offs.zzz, rot.wxx),
 		cab = middleCube(p, RED, GRN, offs.xzz, rot.wxx),
 		cac = cornerCube(p, RED, WHI, GRN, offs.yzz, rot.zxx),
 		aba = middleCube(p, YLW, BLU, offs.zyx, rot.xxz),
+		abb = centerCube(p, BLU, offs.xyx, rot.xyx),
 		abc = middleCube(p, BLU, WHI, offs.yyx, rot.zxz),
+		bba = centerCube(p, YLW, offs.zxx, rot.yyx),
+		bbc = centerCube(p, WHI, offs.yxx, rot.zyx),
 		cba = middleCube(p, GRN, YLW, offs.zzx, rot.yxz),
+		cbb = centerCube(p, GRN, offs.xzx, rot.xzx),
 		cbc = middleCube(p, WHI, GRN, offs.yzx, rot.wxz),
 		aca = cornerCube(p, YLW, ORG, BLU, offs.zyy, rot.yyx),
 		acb = middleCube(p, BLU, ORG, offs.xyy, rot.xyx),
 		acc = cornerCube(p, BLU, ORG, WHI, offs.yyy, rot.xyx),
 		bca = middleCube(p, YLW, ORG, offs.zxy, rot.yyx),
+		bcb = centerCube(p, ORG, offs.xxy, rot.xwx),
 		bcc = middleCube(p, WHI, ORG, offs.yxy, rot.zyx),
 		cca = cornerCube(p, GRN, ORG, YLW, offs.zzy, rot.wyx),
 		ccb = middleCube(p, ORG, GRN, offs.xzy, rot.xwx),
-		ccc = cornerCube(p, ORG, GRN, WHI, offs.yzy, rot.xwx),
-		centr = center(p);
+		ccc = cornerCube(p, ORG, GRN, WHI, offs.yzy, rot.xwx);
 
 	fight(aaa, aab);
 	fight(aaa, aac);
 	fight(aaa, baa);
+	fight(aaa, bab);
 	fight(aaa, bac);
 	fight(aaa, caa);
 	fight(aaa, cab);
 	fight(aaa, cac);
 	fight(aaa, aba);
+	fight(aaa, abb);
 	fight(aaa, abc);
+	fight(aaa, bba);
+	fight(aaa, bbc);
 	fight(aaa, cba);
+	fight(aaa, cbb);
 	fight(aaa, cbc);
 	fight(aaa, aca);
 	fight(aaa, acb);
 	fight(aaa, acc);
 	fight(aaa, bca);
+	fight(aaa, bcb);
 	fight(aaa, bcc);
 	fight(aaa, cca);
 	fight(aaa, ccb);
 	fight(aaa, ccc);
-	fight(aaa, centr);
 	return aaa;
 }
 
