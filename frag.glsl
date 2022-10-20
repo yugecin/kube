@@ -44,7 +44,7 @@ float su(float d1, float d2, float k)
 	float h = clamp(.5+.5*(d2-d1)/k,0.,1.);
 	return mix(d2,d1,h)-k*h*(1.-h);
 }
-vec3 hitPosition = vec3(0);
+vec3 gHitPosition = vec3(0);
 
 struct Cube {
 	float col1, col2, col3;
@@ -52,6 +52,8 @@ struct Cube {
 	vec3 rotation;
 };
 Cube cubes[26];
+bool gHidden[26];
+int gHitIndex;
 
 vec2 oneSidedCube(vec3 p, float materialTop)
 {
@@ -115,6 +117,9 @@ vec2 map(vec3 p)
 {
 	vec2 res = vec2(9e9, 0);
 	for (i = 0; i < 26; i++) {
+		if (gHidden[i]) {
+			continue;
+		}
 		Cube c = cubes[i];
 		vec2 cub;
 		vec3 pa = p;
@@ -149,6 +154,7 @@ vec2 map(vec3 p)
 		}
 		if (cub.x < res.x) {
 			res = cub;
+			gHitIndex = i;
 		}
 	}
 	return res;
@@ -165,7 +171,7 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 {
 	vec4 r = vec4(0);
 	for (i = 0; i < maxSteps && r.z < 350.; i++){
-		hitPosition = ro + rd * r.z;
+		gHitPosition = ro + rd * r.z;
 
 		//p.y += 100.;
 		//p.z -= 10.;
@@ -174,7 +180,7 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 		//p.xy *= rot2(iTime/2.);
 		//p.yz *= rot2(iTime/3.);
 		//p.xz*=rot2(sin(p.z*0.2)*0.2+iTime);
-		vec2 m = map(hitPosition);
+		vec2 m = map(gHitPosition);
 		float distance = m.x;
 		if (distance < .03) {
 			r.x = 1.;
@@ -185,6 +191,39 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 		r.z += distance;
 	}
 	return r;
+}
+
+vec3 colorHit(vec4 result, vec3 rd)
+{
+	vec3 shade = vec3(0);
+	float material = result.w;
+	if (material == _x_) {
+		shade = vec3(.03);
+	} else if (material == RED) {
+		shade = vec3(1, 0, 0);
+	} else if (material == BLU) {
+		shade = vec3(0, 0, 1);
+	} else if (material == GRN) {
+		shade = vec3(0, 1, 0);
+	} else if (material == YLW) {
+		shade = vec3(1, 1, 0);
+	} else if (material == WHI) {
+		shade = vec3(1);
+	} else if (material == ORG) {
+		shade = vec3(1., .3, .0);
+	} else if (material == SHA) {
+		shade = vec3(.9, .9, .8);
+	}
+	vec3 normal = norm(gHitPosition, result.y);
+	// coloring magic from https://www.shadertoy.com/view/sdVczz
+	float diffuse = max(0., dot(normal, -rd));
+	float fresnel = pow(1. + dot(normal, rd), 4.);
+	float specular = pow(max(dot(reflect(rd, normal), -rd), 0.), 30.);
+	float ambientOcc = clamp(map(gHitPosition + normal * .05).x / .05, 0., 1.);
+	float scat = smoothstep(0., 1., map(gHitPosition - rd * .4).x / .4); // "sub surface scattering"
+	shade = mix(specular + shade * (ambientOcc + .2) * (diffuse + scat * .1), shade, fresnel);
+	//shade = mix(background, shade, exp(-.002 * result.y * result.y * result.y));
+	return shade;
 }
 
 #if shadertoy == 1
@@ -221,6 +260,9 @@ void main()
 	cubes[23] = Cube(GRN, ORG, YLW, offs.zzy, rot.wyx),
 	cubes[24] = Cube(ORG, GRN, _x_, offs.xzy, rot.xwx),
 	cubes[25] = Cube(ORG, GRN, WHI, offs.yzy, rot.xwx);
+	for (i = 0; i < 26; i++) {
+		gHidden[i] = false;
+	}
 
 	vec2 uv=v;uv.y/=1.77;
 
@@ -255,35 +297,14 @@ void main()
 	vec4 result = march(ro, rd, 300);
 
 	if (result.x > 0.) { // hit
-		vec3 shade = vec3(0);
-		float material = result.w;
-		if (material == _x_) {
-			shade = vec3(.03);
-		} else if (material == RED) {
-			shade = vec3(1, 0, 0);
-		} else if (material == BLU) {
-			shade = vec3(0, 0, 1);
-		} else if (material == GRN) {
-			shade = vec3(0, 1, 0);
-		} else if (material == YLW) {
-			shade = vec3(1, 1, 0);
-		} else if (material == WHI) {
-			shade = vec3(1);
-		} else if (material == ORG) {
-			shade = vec3(1., .3, .0);
-		} else if (material == SHA) {
-			shade = vec3(.9, .9, .8);
+		vec3 shade = colorHit(result, rd);
+		if (gHitIndex == 0) {
+			gHidden[gHitIndex] = true;
+			result = march(gHitPosition, rd, 100); // TODO: how many steps?
+			vec3 shade2 = result.x > 0. ? colorHit(result, rd) : col;
+			shade = mix(shade, shade2, sin(iTime) * .5 + .5);
 		}
-		vec3 normal = norm(hitPosition, result.y);
-		// coloring magic from https://www.shadertoy.com/view/sdVczz
-		float diffuse = max(0., dot(normal, -rd));
-		float fresnel = pow(1. + dot(normal, rd), 4.);
-		float specular = pow(max(dot(reflect(rd, normal), -rd), 0.), 30.);
-		float ambientOcc = clamp(map(hitPosition + normal * .05).x / .05, 0., 1.);
-		float scat = smoothstep(0., 1., map(hitPosition - rd * .4).x / .4); // "sub surface scattering"
-		shade = mix(specular + shade * (ambientOcc + .2) * (diffuse + scat * .1), shade, fresnel);
 		col = shade;
-		//col = mix(col, shade, exp(-.002 * result.y * result.y * result.y));
 	}
 
 	c = vec4(pow(col, vec3(.4545)), 1.0); // pow for gamma correction because all the cool kids do it
