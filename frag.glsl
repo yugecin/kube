@@ -9,104 +9,100 @@ layout (location=2) uniform vec4 debug[2]; //noexport
 #endif
 #define PI 3.14159265359
 #define HALFPI 1.5707963268
-#define fight(a,b) if(b.x<a.x)a=b; // union of 2 distance function resuls where x is distance and y is material id
-#define _x_ 0. /*'___' : macro name with a double underscore is reserved - unintented behavior is possible*/
-#define RED 1.
-#define BLU 2.
-#define GRN 3.
-#define YLW 4.
-#define WHI 5.
-#define ORG 6.
-#define SHA 7.
+#define _x_ 0 /*'___' : macro name with a double underscore is reserved - unintented behavior is possible*/
+#define RED 1
+#define BLU 2
+#define GRN 3
+#define YLW 4
+#define WHI 5
+#define ORG 6
+#define SHA 7
+const vec3[] COLORS = {
+	vec3(.03),
+	vec3(1, 0, 0),
+	vec3(0, 0, 1),
+	vec3(0, 1, 0),
+	vec3(1, 1, 0),
+	vec3(1),
+	vec3(1., .3, .0),
+	vec3(.9, .9, .8),
+};
 int i;
-
-float _atan2(float y, float x)
-{
-	if(x>0.)return atan(y/x);
-	if(x==0.)if(y>0.)return HALFPI;else return -HALFPI;
-	if(y<0.)return atan(y/x)-PI;return atan(y/x)+PI;
-}
-float _atan2(vec2 v){return _atan2(v.y,v.x);}
-
-float rand(vec2 p){return fract(sin(dot(p.xy,vec2(12.9898,78.233)))*43758.5453);}
-
-mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
-
 const float ROUNDING = 2.5;
 const float SIDE = 12. - ROUNDING;
 const float UNIT = SIDE * 2. + 2. * ROUNDING;
-const float SPACING = UNIT;
-const vec3 offs = vec3(0, SPACING, -SPACING);
+const float SPACING = UNIT * 2;
+const vec3 off = vec3(0, SPACING, -SPACING);
 const vec4 rot = vec4(0, HALFPI, -HALFPI, PI);
-
-float su(float d1, float d2, float k)
-{
-	float h = clamp(.5+.5*(d2-d1)/k,0.,1.);
-	return mix(d2,d1,h)-k*h*(1.-h);
-}
 vec3 gHitPosition = vec3(0);
-
-struct Cube {
-	float col1, col2, col3;
-	vec3 offset;
-	vec3 rotation;
+const vec3[] gCubeOff = {
+	off.zyz, off.xyz, off.yyz, off.zxz, off.xxz, off.yxz, off.zzz, off.xzz, off.yzz,
+	off.zyx, off.xyx, off.yyx, off.zxx, off.yxx, off.zzx, off.xzx, off.yzx, off.zyy,
+	off.xyy, off.yyy, off.zxy, off.xxy, off.yxy, off.zzy, off.xzy, off.yzy,
 };
-Cube cubes[26];
-bool gHidden[26];
+const vec3[] gCubeRot = {
+	rot.yxx, rot.xxx, rot.xxx, rot.yxx, rot.xxx, rot.zxx, rot.wxx, rot.wxx, rot.zxx,
+	rot.xxz, rot.xyx, rot.zxz, rot.yyx, rot.zyx, rot.yxz, rot.xzx, rot.wxz, rot.yyx,
+	rot.xyx, rot.xyx, rot.yyx, rot.xwx, rot.zyx, rot.wyx, rot.xwx, rot.xwx,
+};
+int gCubeCol1[26], gCubeCol2[26], gCubeCol3[26];
+bool gCubeHidden[26];
 int gHitIndex;
 
-vec2 oneSidedCube(vec3 p, float materialTop)
-{
-	vec2	mc = vec2(length(max(abs(p) - SIDE, 0.)) - ROUNDING, 0),
-		tc = vec2(length(max(abs(p + vec3(0., 0., ROUNDING + .02)) - SIDE, 0.)), materialTop);
+mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 
-	return mc.x < tc.x ? mc : tc;
+vec2 oneSidedCube(vec3 p, int cubeIndex)
+{
+	vec2 mc = vec2(length(max(abs(p) - SIDE, 0.)) - ROUNDING, 0);
+	float tc = length(max(abs(p + vec3(0., 0., ROUNDING + .02)) - SIDE, 0.));
+
+	return mc.x < tc ? mc : vec2(tc, float(gCubeCol1[cubeIndex]));
 }
 
-vec2 twoSidedCube(vec3 p, float materialTop, float materialFront)
+vec2 twoSidedCube(vec3 p, int cubeIndex)
 {
-	vec2	mc = oneSidedCube(p, materialTop),
-		fc = vec2(length(max(abs(p + vec3(0, -ROUNDING - .02, 0.)) - SIDE, 0.)), materialFront);
+	vec2 mc = oneSidedCube(p, cubeIndex);
+	float fc = length(max(abs(p + vec3(0, -ROUNDING - .02, 0.)) - SIDE, 0.));
 
-	return mc.x < fc.x ? mc : fc;
+	return mc.x < fc ? mc : vec2(fc, float(gCubeCol2[cubeIndex]));
 }
 
 // also includes the shaft
-vec2 centerCube(vec3 p, float materialTop, vec3 pos, vec3 rot)
+vec2 centerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 {
 	p -= pos;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
-	vec2	mc = oneSidedCube(p, materialTop),
+	vec2	mc = oneSidedCube(p, cubeIndex),
 		sh = vec2(max(length(p.xy)-UNIT/4., length(max(abs(p-vec3(0.,0.,UNIT*.375)) - UNIT*.75, 0.))), 7);
 	
 	mc.x = max(mc.x, -(length(p+vec3(0.,0.,-UNIT))-UNIT*1.2));
 	return mc.x < sh.x ? mc : sh;
 }
 
-vec2 middleCube(vec3 p, float materialTop, float materialFront, vec3 pos, vec3 rot)
+vec2 middleCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 {
 	p -= pos;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
-	vec2 res = twoSidedCube(p, materialTop, materialFront);
+	vec2 res = twoSidedCube(p, cubeIndex);
 	res.x = max(res.x, -(length(p+vec3(0., 62., -62.))-80.));
 	res.x = min(res.x, length(max(abs(p - vec3(0., -7., 7.)) - vec3(7., 9., 9.), 0.)));
 	return res;
 }
 
-vec2 cornerCube(vec3 p, float materialTop, float materialFront, float materialSide, vec3 pos, vec3 rot)
+vec2 cornerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 {
 	p -= pos;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
-	vec2	mc = twoSidedCube(p, materialTop, materialFront),
-		sc = vec2(length(max(abs(p + vec3(-ROUNDING - .02, 0., 0.)) - SIDE, 0.)), materialSide);
+	vec2 mc = twoSidedCube(p, cubeIndex);
+	float sc = length(max(abs(p + vec3(-ROUNDING - .02, 0., 0.)) - SIDE, 0.));
 
-	fight(mc, sc);
+	if (sc < mc.x) mc = vec2(sc, float(gCubeCol3[cubeIndex]));
 	vec3 cubepos = p + vec3(9., 9., -9.);
 	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(UNIT,UNIT,-UNIT))-UNIT*1.18);
 	mc.x = min(mc.x, bit);
@@ -117,40 +113,40 @@ vec2 map(vec3 p)
 {
 	vec2 res = vec2(9e9, 0);
 	for (i = 0; i < 26; i++) {
-		if (gHidden[i]) {
+		if (gCubeHidden[i]) {
 			continue;
 		}
-		Cube c = cubes[i];
+		vec3 offset = gCubeOff[i];
 		vec2 cub;
 		vec3 pa = p;
-		vec3 of = c.offset;
 		/*
-		if (c.offset.x == offs.z) {
+		if (offset.x == off.z) {
 			pa.yz *= rot2(iTime);
 		}
-		if (c.offset.x == offs.y) {
+		if (offset.x == off.y) {
 			pa.yz *= rot2(-iTime);
 		}
-		if (c.offset.x == offs.x) {
+		if (offset.x == off.x) {
 			pa.yz *= rot2(-iTime * 0.8);
 		}
-		if (c.offset.y == offs.z) {
+		if (offset.y == off.z) {
 			//pa.xz *= rot2(iTime);
 		}
 		if (
-			!(c.offset.x == 0 && c.offset.y == 0) &&
-			!(c.offset.x == 0 && c.offset.z == 0) &&
-			!(c.offset.y == 0 && c.offset.z == 0)
+			!(offset.x == 0. && offset.y == 0.) &&
+			!(offset.x == 0. && offset.z == 0.) &&
+			!(offset.y == 0. && offset.z == 0.)
 		) {
-			of *= sin(iTime) + 2;
+			offset *= sin(iTime) + 2.;
 		}
 		*/
-		if (c.col2 == _x_) {
-			cub = centerCube(pa, c.col1, of, c.rotation);
-		} else if (c.col3 == _x_) {
-			cub = middleCube(pa, c.col1, c.col2, of, c.rotation);
+		vec3 rot = gCubeRot[i];
+		if (gCubeCol2[i] == _x_) {
+			cub = centerCube(pa, i, offset, rot);
+		} else if (gCubeCol3[i] == _x_) {
+			cub = middleCube(pa, i, offset, rot);
 		} else {
-			cub = cornerCube(pa, c.col1, c.col2, c.col3, of, c.rotation);
+			cub = cornerCube(pa, i, offset, rot);
 		}
 		if (cub.x < res.x) {
 			res = cub;
@@ -196,23 +192,9 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 vec3 colorHit(vec4 result, vec3 rd)
 {
 	vec3 shade = vec3(0);
-	float material = result.w;
-	if (material == _x_) {
-		shade = vec3(.03);
-	} else if (material == RED) {
-		shade = vec3(1, 0, 0);
-	} else if (material == BLU) {
-		shade = vec3(0, 0, 1);
-	} else if (material == GRN) {
-		shade = vec3(0, 1, 0);
-	} else if (material == YLW) {
-		shade = vec3(1, 1, 0);
-	} else if (material == WHI) {
-		shade = vec3(1);
-	} else if (material == ORG) {
-		shade = vec3(1., .3, .0);
-	} else if (material == SHA) {
-		shade = vec3(.9, .9, .8);
+	int material = int(result.w);
+	if (0 <= material && material <= 7) {
+		shade = COLORS[material];
 	}
 	vec3 normal = norm(gHitPosition, result.y);
 	// coloring magic from https://www.shadertoy.com/view/sdVczz
@@ -234,34 +216,35 @@ in vec2 v;
 void main()
 #endif
 {
-	cubes[ 0] = Cube(RED, YLW, BLU, offs.zyz, rot.yxx),
-	cubes[ 1] = Cube(RED, BLU, _x_, offs.xyz, rot.xxx),
-	cubes[ 2] = Cube(RED, BLU, WHI, offs.yyz, rot.xxx),
-	cubes[ 3] = Cube(RED, YLW, _x_, offs.zxz, rot.yxx),
-	cubes[ 4] = Cube(RED, _x_, _x_, offs.xxz, rot.xxx),
-	cubes[ 5] = Cube(RED, WHI, _x_, offs.yxz, rot.zxx),
-	cubes[ 6] = Cube(RED, GRN, YLW, offs.zzz, rot.wxx),
-	cubes[ 7] = Cube(RED, GRN, _x_, offs.xzz, rot.wxx),
-	cubes[ 8] = Cube(RED, WHI, GRN, offs.yzz, rot.zxx),
-	cubes[ 9] = Cube(YLW, BLU, _x_, offs.zyx, rot.xxz),
-	cubes[10] = Cube(BLU, _x_, _x_, offs.xyx, rot.xyx),
-	cubes[11] = Cube(BLU, WHI, _x_, offs.yyx, rot.zxz),
-	cubes[12] = Cube(YLW, _x_, _x_, offs.zxx, rot.yyx),
-	cubes[13] = Cube(WHI, _x_, _x_, offs.yxx, rot.zyx),
-	cubes[14] = Cube(GRN, YLW, _x_, offs.zzx, rot.yxz),
-	cubes[15] = Cube(GRN, _x_, _x_, offs.xzx, rot.xzx),
-	cubes[16] = Cube(WHI, GRN, _x_, offs.yzx, rot.wxz),
-	cubes[17] = Cube(YLW, ORG, BLU, offs.zyy, rot.yyx),
-	cubes[18] = Cube(BLU, ORG, _x_, offs.xyy, rot.xyx),
-	cubes[19] = Cube(BLU, ORG, WHI, offs.yyy, rot.xyx),
-	cubes[20] = Cube(YLW, ORG, _x_, offs.zxy, rot.yyx),
-	cubes[21] = Cube(ORG, _x_, _x_, offs.xxy, rot.xwx),
-	cubes[22] = Cube(WHI, ORG, _x_, offs.yxy, rot.zyx),
-	cubes[23] = Cube(GRN, ORG, YLW, offs.zzy, rot.wyx),
-	cubes[24] = Cube(ORG, GRN, _x_, offs.xzy, rot.xwx),
-	cubes[25] = Cube(ORG, GRN, WHI, offs.yzy, rot.xwx);
+	gCubeCol1[ 0] = RED; gCubeCol2[ 0] = YLW; gCubeCol3[ 0] = BLU;
+	gCubeCol1[ 0] = RED; gCubeCol2[ 0] = YLW; gCubeCol3[ 0] = BLU;
+	gCubeCol1[ 1] = RED; gCubeCol2[ 1] = BLU; gCubeCol3[ 1] = _x_;
+	gCubeCol1[ 2] = RED; gCubeCol2[ 2] = BLU; gCubeCol3[ 2] = WHI;
+	gCubeCol1[ 3] = RED; gCubeCol2[ 3] = YLW; gCubeCol3[ 3] = _x_;
+	gCubeCol1[ 4] = RED; gCubeCol2[ 4] = _x_; gCubeCol3[ 4] = _x_;
+	gCubeCol1[ 5] = RED; gCubeCol2[ 5] = WHI; gCubeCol3[ 5] = _x_;
+	gCubeCol1[ 6] = RED; gCubeCol2[ 6] = GRN; gCubeCol3[ 6] = YLW;
+	gCubeCol1[ 7] = RED; gCubeCol2[ 7] = GRN; gCubeCol3[ 7] = _x_;
+	gCubeCol1[ 8] = RED; gCubeCol2[ 8] = WHI; gCubeCol3[ 8] = GRN;
+	gCubeCol1[ 9] = YLW; gCubeCol2[ 9] = BLU; gCubeCol3[ 9] = _x_;
+	gCubeCol1[10] = BLU; gCubeCol2[10] = _x_; gCubeCol3[10] = _x_;
+	gCubeCol1[11] = BLU; gCubeCol2[11] = WHI; gCubeCol3[11] = _x_;
+	gCubeCol1[12] = YLW; gCubeCol2[12] = _x_; gCubeCol3[12] = _x_;
+	gCubeCol1[13] = WHI; gCubeCol2[13] = _x_; gCubeCol3[13] = _x_;
+	gCubeCol1[14] = GRN; gCubeCol2[14] = YLW; gCubeCol3[14] = _x_;
+	gCubeCol1[15] = GRN; gCubeCol2[15] = _x_; gCubeCol3[15] = _x_;
+	gCubeCol1[16] = WHI; gCubeCol2[16] = GRN; gCubeCol3[16] = _x_;
+	gCubeCol1[17] = YLW; gCubeCol2[17] = ORG; gCubeCol3[17] = BLU;
+	gCubeCol1[18] = BLU; gCubeCol2[18] = ORG; gCubeCol3[18] = _x_;
+	gCubeCol1[19] = BLU; gCubeCol2[19] = ORG; gCubeCol3[19] = WHI;
+	gCubeCol1[20] = YLW; gCubeCol2[20] = ORG; gCubeCol3[20] = _x_;
+	gCubeCol1[21] = ORG; gCubeCol2[21] = _x_; gCubeCol3[21] = _x_;
+	gCubeCol1[22] = WHI; gCubeCol2[22] = ORG; gCubeCol3[22] = _x_;
+	gCubeCol1[23] = GRN; gCubeCol2[23] = ORG; gCubeCol3[23] = YLW;
+	gCubeCol1[24] = ORG; gCubeCol2[24] = GRN; gCubeCol3[24] = _x_;
+	gCubeCol1[25] = ORG; gCubeCol2[25] = GRN; gCubeCol3[25] = WHI;
 	for (i = 0; i < 26; i++) {
-		gHidden[i] = false;
+		gCubeHidden[i] = false;
 	}
 
 	vec2 uv=v;uv.y/=1.77;
@@ -299,7 +282,7 @@ void main()
 	if (result.x > 0.) { // hit
 		vec3 shade = colorHit(result, rd);
 		if (gHitIndex == 0) {
-			gHidden[gHitIndex] = true;
+			gCubeHidden[gHitIndex] = true;
 			result = march(gHitPosition, rd, 100); // TODO: how many steps?
 			vec3 shade2 = result.x > 0. ? colorHit(result, rd) : col;
 			shade = mix(shade, shade2, sin(iTime) * .5 + .5);
