@@ -61,12 +61,13 @@ vec2 twoSidedCube(vec3 p, int materialTop, int materialFront)
 }
 
 // also includes the shaft
-vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec2 rot)
+vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec3 rot)
 {
 	p -= pos;
 	rot *= HALFPI;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
+	p.xz *= rot2(rot.z);
 	vec2	mc = oneSidedCube(p, materialTop),
 		sh = vec2(max(length(p.xy)-unit/4., length(max(abs(p-vec3(0.,0.,unit*.375)) - unit*.75, 0.))), 7);
 	
@@ -76,12 +77,12 @@ vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec2 rot)
 
 vec2 center(vec3 p)
 {
-	vec2	bab = centerCube(p, RED, offs.xxz, rot.xx),
-		bba = centerCube(p, YLW, offs.zxx, rot.yy),
-		abb = centerCube(p, BLU, offs.xyx, rot.xy),
-		bbc = centerCube(p, WHI, offs.yxx, rot.zy),
-		ccb = centerCube(p, GRN, offs.xzx, rot.xz),
-		bcb = centerCube(p, ORG, offs.xxy, rot.xw);
+	vec2	bab = centerCube(p, RED, offs.xxz, rot.xxx),
+		bba = centerCube(p, YLW, offs.zxx, rot.yyx),
+		abb = centerCube(p, BLU, offs.xyx, rot.xyx),
+		bbc = centerCube(p, WHI, offs.yxx, rot.zyx),
+		ccb = centerCube(p, GRN, offs.xzx, rot.xzx),
+		bcb = centerCube(p, ORG, offs.xxy, rot.xwx);
 
 	fight(bab, bba);
 	fight(bab, abb);
@@ -91,23 +92,26 @@ vec2 center(vec3 p)
 	return bab;
 }
 
-vec2 middleCube(vec3 p, int materialTop, int materialFront, vec3 pos, vec2 rot)
+vec2 middleCube(vec3 p, int materialTop, int materialFront, vec3 pos, vec3 rot)
 {
 	p -= pos;
-	//p.xy *= rot2(rot.x);
-	//p.xy *= rot2(rot.x);
+	rot *= HALFPI;
+	p.xy *= rot2(rot.x);
+	p.yz *= rot2(rot.y);
+	p.xz *= rot2(rot.z);
 	vec2 res = twoSidedCube(p, materialTop, materialFront);
 	res.x = max(res.x, -(length(p+vec3(0., 62., -62.))-80.));
 	res.x = min(res.x, length(max(abs(p - vec3(0., -7., 7.)) - vec3(7., 9., 9.), 0.)));
 	return res;
 }
 
-vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, vec3 pos, vec2 rot)
+vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, vec3 pos, vec3 rot)
 {
 	p -= pos;
 	rot *= HALFPI;
 	p.xy *= rot2(rot.x);
-	p.xy *= rot2(rot.y);
+	p.yz *= rot2(rot.y);
+	p.xz *= rot2(rot.z);
 	vec2	mc = twoSidedCube(p, materialTop, materialFront),
 		sc = vec2(length(max(abs(p + vec3(-2.02, 0., 0.)) - 10, 0.)), materialSide);
 
@@ -120,13 +124,47 @@ vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, ve
 
 vec2 map(vec3 p)
 {
-	vec2	aaa = cornerCube(p, RED, YLW, BLU, offs.zyz, rot.xy),
-		aab = middleCube(p, RED, BLU, offs.xyz, rot.xx),
-		aac = cornerCube(p, RED, BLU, WHI, offs.yyz, rot.xx),
+	vec2	aaa = cornerCube(p, RED, YLW, BLU, offs.zyz, rot.yxx),
+		aab = middleCube(p, RED, BLU, offs.xyz, rot.xxx),
+		aac = cornerCube(p, RED, BLU, WHI, offs.yyz, rot.xxx),
+		baa = middleCube(p, RED, YLW, offs.zxz, rot.yxx),
+		bac = middleCube(p, RED, WHI, offs.yxz, rot.zxx),
+		caa = cornerCube(p, RED, GRN, YLW, offs.zzz, rot.wxx),
+		cab = middleCube(p, RED, GRN, offs.xzz, rot.wxx),
+		cac = cornerCube(p, RED, WHI, GRN, offs.yzz, rot.zxx),
+		aba = middleCube(p, YLW, BLU, offs.zyx, rot.xxz),
+		abc = middleCube(p, BLU, WHI, offs.yyx, rot.zxz),
+		cba = middleCube(p, GRN, YLW, offs.zzx, rot.yxz),
+		cbc = middleCube(p, WHI, GRN, offs.yzx, rot.wxz),
+		aca = cornerCube(p, YLW, ORG, BLU, offs.zyy, rot.yyx),
+		acb = middleCube(p, BLU, ORG, offs.xyy, rot.xyx),
+		acc = cornerCube(p, BLU, ORG, WHI, offs.yyy, rot.xyx),
+		bca = middleCube(p, YLW, ORG, offs.zxy, rot.yyx),
+		bcc = middleCube(p, WHI, ORG, offs.yxy, rot.zyx),
+		cca = cornerCube(p, GRN, ORG, YLW, offs.zzy, rot.wyx),
+		ccb = middleCube(p, ORG, GRN, offs.xzy, rot.xwx),
+		ccc = cornerCube(p, ORG, GRN, WHI, offs.yzy, rot.xwx),
 		centr = center(p);
 
 	fight(aaa, aab);
 	fight(aaa, aac);
+	fight(aaa, baa);
+	fight(aaa, bac);
+	fight(aaa, caa);
+	fight(aaa, cab);
+	fight(aaa, cac);
+	fight(aaa, aba);
+	fight(aaa, abc);
+	fight(aaa, cba);
+	fight(aaa, cbc);
+	fight(aaa, aca);
+	fight(aaa, acb);
+	fight(aaa, acc);
+	fight(aaa, bca);
+	fight(aaa, bcc);
+	fight(aaa, cca);
+	fight(aaa, ccb);
+	fight(aaa, ccc);
 	fight(aaa, centr);
 	return aaa;
 }
@@ -153,7 +191,7 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 		//p.xz*=rot2(sin(p.z*0.2)*0.2+iTime);
 		vec2 m = map(hitPosition);
 		float distance = m.x;
-		if (distance < .008) {
+		if (distance < .03) {
 			r.x = 1;
 			r.y = distance;
 			r.w = m.y;
@@ -196,7 +234,7 @@ void main()
 		rd = mat3(cl,normalize(cross(cl,cf)),cf)*normalize(vec3(uv,1)),
 		col = vec3(.1) - length(uv) * .05;
 
-	vec4 result = march(ro, rd, 200);
+	vec4 result = march(ro, rd, 300);
 
 	if (result.x > 0) { // hit
 		vec3 shade = vec3(0);
@@ -224,7 +262,7 @@ void main()
 		float fresnel = pow(1. + dot(normal, rd), 4.);
 		float specular = pow(max(dot(reflect(rd, normal), -rd), 0.), 30.);
 		float ambientOcc = clamp(map(hitPosition + normal * .05).x / .05, 0., 1.);
-		float scat = smoothstep(0., 1., map(hitPosition - rd * .4).x / .4);
+		float scat = smoothstep(0., 1., map(hitPosition - rd * .4).x / .4); // "sub surface scattering"
 		shade = mix(specular + shade * (ambientOcc + .2) * (diffuse + scat * .1), shade, fresnel);
 		col = shade;
 		//col = mix(col, shade, exp(-.002 * result.y * result.y * result.y));
