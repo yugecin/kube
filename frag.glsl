@@ -32,9 +32,11 @@ float rand(vec2 p){return fract(sin(dot(p.xy,vec2(12.9898,78.233)))*43758.5453);
 
 mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 
-float unit = 24;
-float spacing = unit;
-vec3 offs = vec3(0., spacing, -spacing);
+float ROUNDING = 2.5;
+float SIDE = 12 - ROUNDING;
+float UNIT = SIDE * 2 + 2 * ROUNDING;
+float SPACING = UNIT;
+vec3 offs = vec3(0., SPACING, -SPACING);
 vec4 rot = vec4(0, HALFPI, -HALFPI, PI);
 
 float su(float d1, float d2, float k)
@@ -46,8 +48,8 @@ vec3 hitPosition = vec3(0);
 
 vec2 oneSidedCube(vec3 p, int materialTop)
 {
-	vec2	mc = vec2(length(max(abs(p) - 10, 0.)) - 2, 0),
-		tc = vec2(length(max(abs(p + vec3(0., 0., 2.02)) - 10, 0.)), materialTop);
+	vec2	mc = vec2(length(max(abs(p) - SIDE, 0.)) - ROUNDING, 0),
+		tc = vec2(length(max(abs(p + vec3(0., 0., ROUNDING + .02)) - SIDE, 0.)), materialTop);
 
 	return mc.x < tc.x ? mc : tc;
 }
@@ -55,7 +57,7 @@ vec2 oneSidedCube(vec3 p, int materialTop)
 vec2 twoSidedCube(vec3 p, int materialTop, int materialFront)
 {
 	vec2	mc = oneSidedCube(p, materialTop),
-		fc = vec2(length(max(abs(p + vec3(0, -2.02, 0.)) - 10, 0.)), materialFront);
+		fc = vec2(length(max(abs(p + vec3(0, -ROUNDING - .02, 0.)) - SIDE, 0.)), materialFront);
 
 	return mc.x < fc.x ? mc : fc;
 }
@@ -68,9 +70,9 @@ vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec3 rot)
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
 	vec2	mc = oneSidedCube(p, materialTop),
-		sh = vec2(max(length(p.xy)-unit/4., length(max(abs(p-vec3(0.,0.,unit*.375)) - unit*.75, 0.))), 7);
+		sh = vec2(max(length(p.xy)-UNIT/4., length(max(abs(p-vec3(0.,0.,UNIT*.375)) - UNIT*.75, 0.))), 7);
 	
-	mc.x = max(mc.x, -(length(p+vec3(0.,0.,-unit))-unit*1.2));
+	mc.x = max(mc.x, -(length(p+vec3(0.,0.,-UNIT))-UNIT*1.2));
 	return mc.x < sh.x ? mc : sh;
 }
 
@@ -93,11 +95,11 @@ vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, ve
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
 	vec2	mc = twoSidedCube(p, materialTop, materialFront),
-		sc = vec2(length(max(abs(p + vec3(-2.02, 0., 0.)) - 10, 0.)), materialSide);
+		sc = vec2(length(max(abs(p + vec3(-ROUNDING - .02, 0., 0.)) - SIDE, 0.)), materialSide);
 
 	fight(mc, sc);
 	vec3 cubepos = p + vec3(9., 9., -9.);
-	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(unit,unit,-unit))-unit*1.18);
+	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(UNIT,UNIT,-UNIT))-UNIT*1.18);
 	mc.x = min(mc.x, bit);
 	return mc;
 }
