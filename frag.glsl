@@ -35,7 +35,7 @@ mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 float unit = 24;
 float spacing = unit;
 vec3 offs = vec3(0., spacing, -spacing);
-vec4 rot = vec4(0, 1, -1, 2);
+vec4 rot = vec4(0, HALFPI, -HALFPI, PI);
 
 float su(float d1, float d2, float k)
 {
@@ -64,7 +64,6 @@ vec2 twoSidedCube(vec3 p, int materialTop, int materialFront)
 vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec3 rot)
 {
 	p -= pos;
-	rot *= HALFPI;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
@@ -78,7 +77,6 @@ vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec3 rot)
 vec2 middleCube(vec3 p, int materialTop, int materialFront, vec3 pos, vec3 rot)
 {
 	p -= pos;
-	rot *= HALFPI;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
@@ -91,7 +89,6 @@ vec2 middleCube(vec3 p, int materialTop, int materialFront, vec3 pos, vec3 rot)
 vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, vec3 pos, vec3 rot)
 {
 	p -= pos;
-	rot *= HALFPI;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
