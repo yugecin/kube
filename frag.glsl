@@ -31,7 +31,7 @@ int i;
 const float ROUNDING = 2.5;
 const float SIDE = 12. - ROUNDING;
 const float UNIT = SIDE * 2. + 2. * ROUNDING;
-const float SPACING = UNIT * 2;
+const float SPACING = UNIT;
 const vec3 off = vec3(0, SPACING, -SPACING);
 const vec4 rot = vec4(0, HALFPI, -HALFPI, PI);
 vec3 gHitPosition = vec3(0);
@@ -48,6 +48,25 @@ const vec3[] gCubeRot = {
 int gCubeCol1[26], gCubeCol2[26], gCubeCol3[26];
 bool gCubeHidden[26];
 int gHitIndex;
+#define F 0 // front
+#define G 1 // front(reverse)
+#define L 2 // left
+#define M 3 // left(reverse)
+#define R 4 // right
+#define S 5 // right(reverse)
+#define U 6 // up
+#define V 7 // up(reverse)
+#define D 8 // down
+#define E 9 // down(reverse)
+#define B 10 // back
+#define C 11 // back(reverse)
+const int gNumMovements = 2;
+const int[] gMovements = {
+	F, F, V, D, L, M, F, F, M, S,
+};
+int gCurrentMovement;
+float gCurrentMovementProgress;
+const float MOVEMENT_TIME_SECONDS = 1.;
 
 mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 
@@ -119,6 +138,15 @@ vec2 map(vec3 p)
 		vec3 offset = gCubeOff[i];
 		vec2 cub;
 		vec3 pa = p;
+		switch (gCurrentMovement) {
+		case F:
+			if (offset.y == off.y) {
+				pa.xz *= rot2(HALFPI * gCurrentMovementProgress);
+			}
+			break;
+		case V:
+			break;
+		}
 		/*
 		if (offset.x == off.z) {
 			pa.yz *= rot2(iTime);
@@ -246,6 +274,38 @@ void main()
 	for (i = 0; i < 26; i++) {
 		gCubeHidden[i] = false;
 	}
+	gCurrentMovement = -1;
+	for (i = 0; i < gNumMovements; i++) {
+		float until = float(i + 1) * MOVEMENT_TIME_SECONDS;
+		if (float(until) < iTime) {
+			int tmp;
+			switch (gMovements[i]) {
+			case F:
+				tmp = gCubeCol1[2];
+				gCubeCol1[2] = gCubeCol2[0];
+				gCubeCol2[0] = gCubeCol2[17];
+				gCubeCol2[17] = gCubeCol3[19];
+				gCubeCol3[19] = tmp;
+				tmp = gCubeCol2[11];
+				gCubeCol2[11] = gCubeCol1[1];
+				gCubeCol1[1] = gCubeCol1[9];
+				gCubeCol1[9] = gCubeCol2[18];
+				gCubeCol2[18] = tmp;
+				tmp = gCubeCol2[19];
+				gCubeCol2[19] = gCubeCol3[2];
+				gCubeCol3[2] = gCubeCol1[0];
+				gCubeCol1[0] = gCubeCol1[17];
+				gCubeCol1[17] = tmp;
+				break;
+			case L:
+				break;
+			}
+		} else {
+			gCurrentMovement = gMovements[i];
+			gCurrentMovementProgress = 1. - (float(until) - iTime) / MOVEMENT_TIME_SECONDS;
+			break;
+		}
+	}
 
 	vec2 uv=v;uv.y/=1.77;
 
@@ -281,12 +341,14 @@ void main()
 
 	if (result.x > 0.) { // hit
 		vec3 shade = colorHit(result, rd);
+		/*
 		if (gHitIndex == 0) {
 			gCubeHidden[gHitIndex] = true;
 			result = march(gHitPosition, rd, 100); // TODO: how many steps?
 			vec3 shade2 = result.x > 0. ? colorHit(result, rd) : col;
 			shade = mix(shade, shade2, sin(iTime) * .5 + .5);
 		}
+		*/
 		col = shade;
 	}
 
