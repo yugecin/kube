@@ -5,7 +5,7 @@
 #define PI 3.14159265359
 #define HALFPI 1.5707963268
 #define fight(a,b) if(b.x<a.x)a=b; // union of 2 distance function resuls where x is distance and y is material id
-#define BLK 0
+#define ___ 0
 #define RED 1
 #define BLU 2
 #define GRN 3
@@ -17,7 +17,6 @@ layout (location=0) uniform vec4 fpar[2];
 layout (location=2) uniform vec4 debug[2]; //noexport
 out vec4 c;
 in vec2 v;
-float g;
 int i;
 
 float _atan2(float y, float x)
@@ -45,6 +44,13 @@ float su(float d1, float d2, float k)
 	return mix(d2,d1,h)-k*h*(1.-h);
 }
 vec3 hitPosition = vec3(0);
+
+struct Cube {
+	int col1, col2, col3;
+	vec3 offset;
+	vec3 rotation;
+};
+Cube cubes[26];
 
 vec2 oneSidedCube(vec3 p, int materialTop)
 {
@@ -106,59 +112,35 @@ vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, ve
 
 vec2 map(vec3 p)
 {
-	vec2	aaa = cornerCube(p, RED, YLW, BLU, offs.zyz, rot.yxx),
-		aab = middleCube(p, RED, BLU, offs.xyz, rot.xxx),
-		aac = cornerCube(p, RED, BLU, WHI, offs.yyz, rot.xxx),
-		baa = middleCube(p, RED, YLW, offs.zxz, rot.yxx),
-		bab = centerCube(p, RED, offs.xxz, rot.xxx),
-		bac = middleCube(p, RED, WHI, offs.yxz, rot.zxx),
-		caa = cornerCube(p, RED, GRN, YLW, offs.zzz, rot.wxx),
-		cab = middleCube(p, RED, GRN, offs.xzz, rot.wxx),
-		cac = cornerCube(p, RED, WHI, GRN, offs.yzz, rot.zxx),
-		aba = middleCube(p, YLW, BLU, offs.zyx, rot.xxz),
-		abb = centerCube(p, BLU, offs.xyx, rot.xyx),
-		abc = middleCube(p, BLU, WHI, offs.yyx, rot.zxz),
-		bba = centerCube(p, YLW, offs.zxx, rot.yyx),
-		bbc = centerCube(p, WHI, offs.yxx, rot.zyx),
-		cba = middleCube(p, GRN, YLW, offs.zzx, rot.yxz),
-		cbb = centerCube(p, GRN, offs.xzx, rot.xzx),
-		cbc = middleCube(p, WHI, GRN, offs.yzx, rot.wxz),
-		aca = cornerCube(p, YLW, ORG, BLU, offs.zyy, rot.yyx),
-		acb = middleCube(p, BLU, ORG, offs.xyy, rot.xyx),
-		acc = cornerCube(p, BLU, ORG, WHI, offs.yyy, rot.xyx),
-		bca = middleCube(p, YLW, ORG, offs.zxy, rot.yyx),
-		bcb = centerCube(p, ORG, offs.xxy, rot.xwx),
-		bcc = middleCube(p, WHI, ORG, offs.yxy, rot.zyx),
-		cca = cornerCube(p, GRN, ORG, YLW, offs.zzy, rot.wyx),
-		ccb = middleCube(p, ORG, GRN, offs.xzy, rot.xwx),
-		ccc = cornerCube(p, ORG, GRN, WHI, offs.yzy, rot.xwx);
-
-	fight(aaa, aab);
-	fight(aaa, aac);
-	fight(aaa, baa);
-	fight(aaa, bab);
-	fight(aaa, bac);
-	fight(aaa, caa);
-	fight(aaa, cab);
-	fight(aaa, cac);
-	fight(aaa, aba);
-	fight(aaa, abb);
-	fight(aaa, abc);
-	fight(aaa, bba);
-	fight(aaa, bbc);
-	fight(aaa, cba);
-	fight(aaa, cbb);
-	fight(aaa, cbc);
-	fight(aaa, aca);
-	fight(aaa, acb);
-	fight(aaa, acc);
-	fight(aaa, bca);
-	fight(aaa, bcb);
-	fight(aaa, bcc);
-	fight(aaa, cca);
-	fight(aaa, ccb);
-	fight(aaa, ccc);
-	return aaa;
+	vec2 res = vec2(9e9, 0);
+	for (i = 0; i < 26; i++) {
+		Cube c = cubes[i];
+		vec2 cub;
+		vec3 pa = p;
+		if (c.offset.x == offs.z) {
+			pa.yz *= rot2(iTime);
+		}
+		if (c.offset.x == offs.y) {
+			pa.yz *= rot2(-iTime);
+		}
+		if (c.offset.x == offs.x) {
+			pa.yz *= rot2(-iTime * 0.8);
+		}
+		if (c.offset.y == offs.z) {
+			//pa.xz *= rot2(iTime);
+		}
+		if (c.col2 == ___) {
+			cub = centerCube(pa, c.col1, c.offset, c.rotation);
+		} else if (c.col3 == ___) {
+			cub = middleCube(pa, c.col1, c.col2, c.offset, c.rotation);
+		} else {
+			cub = cornerCube(pa, c.col1, c.col2, c.col3, c.offset, c.rotation);
+		}
+		if (cub.x < res.x) {
+			res = cub;
+		}
+	}
+	return res;
 }
 
 vec3 norm(vec3 p, float dist_to_p)
@@ -196,6 +178,33 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 
 void main()
 {
+	cubes[ 0] = Cube(RED, YLW, BLU, offs.zyz, rot.yxx),
+	cubes[ 1] = Cube(RED, BLU, ___, offs.xyz, rot.xxx),
+	cubes[ 2] = Cube(RED, BLU, WHI, offs.yyz, rot.xxx),
+	cubes[ 3] = Cube(RED, YLW, ___, offs.zxz, rot.yxx),
+	cubes[ 4] = Cube(RED, ___, ___, offs.xxz, rot.xxx),
+	cubes[ 5] = Cube(RED, WHI, ___, offs.yxz, rot.zxx),
+	cubes[ 6] = Cube(RED, GRN, YLW, offs.zzz, rot.wxx),
+	cubes[ 7] = Cube(RED, GRN, ___, offs.xzz, rot.wxx),
+	cubes[ 8] = Cube(RED, WHI, GRN, offs.yzz, rot.zxx),
+	cubes[ 9] = Cube(YLW, BLU, ___, offs.zyx, rot.xxz),
+	cubes[10] = Cube(BLU, ___, ___, offs.xyx, rot.xyx),
+	cubes[11] = Cube(BLU, WHI, ___, offs.yyx, rot.zxz),
+	cubes[12] = Cube(YLW, ___, ___, offs.zxx, rot.yyx),
+	cubes[13] = Cube(WHI, ___, ___, offs.yxx, rot.zyx),
+	cubes[14] = Cube(GRN, YLW, ___, offs.zzx, rot.yxz),
+	cubes[15] = Cube(GRN, ___, ___, offs.xzx, rot.xzx),
+	cubes[16] = Cube(WHI, GRN, ___, offs.yzx, rot.wxz),
+	cubes[17] = Cube(YLW, ORG, BLU, offs.zyy, rot.yyx),
+	cubes[18] = Cube(BLU, ORG, ___, offs.xyy, rot.xyx),
+	cubes[19] = Cube(BLU, ORG, WHI, offs.yyy, rot.xyx),
+	cubes[20] = Cube(YLW, ORG, ___, offs.zxy, rot.yyx),
+	cubes[21] = Cube(ORG, ___, ___, offs.xxy, rot.xwx),
+	cubes[22] = Cube(WHI, ORG, ___, offs.yxy, rot.zyx),
+	cubes[23] = Cube(GRN, ORG, YLW, offs.zzy, rot.wyx),
+	cubes[24] = Cube(ORG, GRN, ___, offs.xzy, rot.xwx),
+	cubes[25] = Cube(ORG, GRN, WHI, offs.yzy, rot.xwx);
+
 	vec2 uv=v;uv.y/=1.77;
 
 	vec3 ro = vec3(10 * sin(iTime), -30 * cos(iTime), -20);
