@@ -2,7 +2,6 @@
 #version 430
 #define iTime fpar[0].x
 #define debugmov 1 //noexport
-//#define flopineshade 1 //noexport
 #define PI 3.14159265359
 #define HALFPI 1.5707963268
 #define fight(a,b) if(b.x<a.x)a=b; // union of 2 distance function resuls where x is distance and y is material id
@@ -16,7 +15,6 @@
 #define SHA 7
 layout (location=0) uniform vec4 fpar[2];
 layout (location=2) uniform vec4 debug[2]; //noexport
-layout (location=4) uniform sampler2D tex;
 out vec4 c;
 in vec2 v;
 float g;
@@ -37,6 +35,7 @@ mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 float unit = 24;
 float spacing = unit;
 vec3 offs = vec3(0., spacing, -spacing);
+vec4 rot = vec4(0, 1, -1, 2);
 
 float su(float d1, float d2, float k)
 {
@@ -52,9 +51,9 @@ vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec2 rot)
 	rot *= HALFPI;
 	p.xy *= rot2(rot.x);
 	p.yz *= rot2(rot.y);
-	vec2	mc = vec2(length(max(abs(p) - vec3(10.), 0.)) - 2, 0),
-		tc = vec2(length(max(abs(p + vec3(0., 0., 2.02)) - vec3(10), 0.)), materialTop),
-		sh = vec2(max(length(p.xy)-unit/4., length(max(abs(p-vec3(0.,0.,unit*.375)) - vec3(unit*.75), 0.))), 7);
+	vec2	mc = vec2(length(max(abs(p) - 10., 0.)) - 2, 0),
+		tc = vec2(length(max(abs(p + vec3(0., 0., 2.02)) - 10, 0.)), materialTop),
+		sh = vec2(max(length(p.xy)-unit/4., length(max(abs(p-vec3(0.,0.,unit*.375)) - unit*.75, 0.))), 7);
 	
 	fight(mc, tc);
 	mc.x = max(mc.x, -(length(p+vec3(0.,0.,-unit))-unit*1.2));
@@ -64,12 +63,12 @@ vec2 centerCube(vec3 p, int materialTop, vec3 pos, vec2 rot)
 
 vec2 center(vec3 p)
 {
-	vec2	bab = centerCube(p, RED, offs.xxz, vec2(0)),
-		bba = centerCube(p, YLW, offs.zxx, vec2(1, 1)),
-		abb = centerCube(p, BLU, offs.xyx, vec2(0, 1)),
-		bbc = centerCube(p, WHI, offs.yxx, vec2(-1, 1)),
-		ccb = centerCube(p, GRN, offs.xzx, vec2(0, -1)),
-		bcb = centerCube(p, ORG, offs.xxy, vec2(0, -2));
+	vec2	bab = centerCube(p, RED, offs.xxz, rot.xx),
+		bba = centerCube(p, YLW, offs.zxx, rot.yy),
+		abb = centerCube(p, BLU, offs.xyx, rot.xy),
+		bbc = centerCube(p, WHI, offs.yxx, rot.zy),
+		ccb = centerCube(p, GRN, offs.xzx, rot.xz),
+		bcb = centerCube(p, ORG, offs.xxy, rot.xw);
 
 	fight(bab, bba);
 	fight(bab, abb);
@@ -81,9 +80,9 @@ vec2 center(vec3 p)
 
 vec2 twoSidedCube(vec3 p, int materialTop, int materialFront)
 {
-	vec2	mc = vec2(length(max(abs(p) - vec3(10.), 0.)) - 2, 0),
-		tc = vec2(length(max(abs(p + vec3(0., 0., 2.02)) - vec3(10), 0.)), materialTop),
-		fc = vec2(length(max(abs(p + vec3(0, -2.02, 0.)) - vec3(10), 0.)), materialFront);
+	vec2	mc = vec2(length(max(abs(p) - 10, 0.)) - 2, 0),
+		tc = vec2(length(max(abs(p + vec3(0., 0., 2.02)) - 10, 0.)), materialTop),
+		fc = vec2(length(max(abs(p + vec3(0, -2.02, 0.)) - 10, 0.)), materialFront);
 	
 	fight(mc, tc);
 	fight(mc, fc);
@@ -108,16 +107,11 @@ vec2 cornerCube(vec3 p, int materialTop, int materialFront, int materialSide, ve
 	p.xy *= rot2(rot.x);
 	p.xy *= rot2(rot.y);
 	vec2	mc = twoSidedCube(p, materialTop, materialFront),
-		sc = vec2(length(max(abs(p + vec3(-2.02, 0., 0.)) - vec3(10), 0.)), materialSide);
+		sc = vec2(length(max(abs(p + vec3(-2.02, 0., 0.)) - 10, 0.)), materialSide);
 
 	fight(mc, sc);
 	vec3 cubepos = p + vec3(9., 9., -9.);
-	float	bitcube = length(max(abs(cubepos) - vec3(7.), 0.)),
-		bitpla1 = dot(cubepos, normalize(vec3(1, 0, -1))) - 4,
-		bitpla2 = dot(cubepos, normalize(vec3(0, 1, -1))) - 4,
-		bitpla3 = dot(cubepos, normalize(vec3(1, 1, 0))) - 4,
-		bit = max(bitpla3, max(bitpla2, max(bitpla1, bitcube)));
-	bit = max(bitcube, length(p+vec3(unit,unit,-unit))-unit*1.18);
+	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(unit,unit,-unit))-unit*1.18);
 	mc.x = min(mc.x, bit);
 	return mc;
 }
@@ -129,9 +123,9 @@ vec2 rotpos(vec2 res, vec3 pos, float b)
 
 vec2 cube(vec3 p)
 {
-	vec2	aaa = cornerCube(p, 1, 2, 3, offs.zyz, vec2(0, 1)),
-		aab = middleCube(p, 1, 2, offs.xyz, vec2(0)),
-		aac = cornerCube(p, 1, 2, 3, offs.yyz, vec2(0)),
+	vec2	aaa = cornerCube(p, 1, 2, 3, offs.zyz, rot.xy),
+		aab = middleCube(p, 1, 2, offs.xyz, rot.xx),
+		aac = cornerCube(p, 1, 2, 3, offs.yyz, rot.xx),
 		centr = center(p);
 
 	fight(aaa, aab);
@@ -216,8 +210,6 @@ void main()
 	vec4 result = march(ro, rd, 200);
 
 	vec3 col = vec3(.1) - length(uv) * .05;
-	vec3 lightDirection = normalize(vec3(-.1, .4, -.3));
-	lightDirection = -rd;
 
 	if (result.x > 0) {
 		// hit
@@ -242,11 +234,11 @@ void main()
 		}
 		vec3 normal = norm(hitPosition, result.y);
 		// coloring magic from https://www.shadertoy.com/view/sdVczz
-		float diffuse = max(0., dot(normal, lightDirection));
+		float diffuse = max(0., dot(normal, -rd));
 		float fresnel = pow(1. + dot(normal, rd), 4.);
-		float specular = pow(max(dot(reflect(-lightDirection, normal), -rd), 0.), 30.);
+		float specular = pow(max(dot(reflect(rd, normal), -rd), 0.), 30.);
 		float ambientOcc = clamp(map(hitPosition + normal * .05).x / .05, 0., 1.);
-		float scat = smoothstep(0., 1., map(hitPosition + lightDirection * .4).x / .4);
+		float scat = smoothstep(0., 1., map(hitPosition - rd * .4).x / .4);
 		shade = mix(specular + shade * (ambientOcc + .2) * (diffuse + scat * .1), shade, fresnel);
 		col = shade;
 		//col = mix(col, shade, exp(-.002 * result.y * result.y * result.y));
