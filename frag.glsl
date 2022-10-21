@@ -28,6 +28,7 @@ const vec3[] COLORS = {
 	vec3(.9, .9, .8),
 };
 int i;
+float gRounding, gSide, gUnit, gOffsetStuff;
 const float ROUNDING = 2.5;
 const float SIDE = 12. - ROUNDING;
 const float UNIT = SIDE * 2. + 2. * ROUNDING;
@@ -94,13 +95,15 @@ const int[] gCubeHiddenOrder = {
     //0,
 };
 bool gHackFadeStuff;
+bool gShaft;
+float gTimeMod;
 
 mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 
 vec2 oneSidedCube(vec3 p, int cubeIndex)
 {
-	vec2 mc = vec2(length(max(abs(p) - SIDE, 0.)) - ROUNDING, 0);
-	float tc = length(max(abs(p + vec3(0., 0., ROUNDING + .02)) - SIDE, 0.));
+	vec2 mc = vec2(length(max(abs(p) - gSide, 0.)) - gRounding, 0);
+	float tc = length(max(abs(p + vec3(0., 0., gRounding + .02)) - gSide, 0.));
 
 	return mc.x < tc ? mc : vec2(tc, float(gCubeCol[0][cubeIndex]));
 }
@@ -108,7 +111,7 @@ vec2 oneSidedCube(vec3 p, int cubeIndex)
 vec2 twoSidedCube(vec3 p, int cubeIndex)
 {
 	vec2 mc = oneSidedCube(p, cubeIndex);
-	float fc = length(max(abs(p + vec3(0, -ROUNDING - .02, 0.)) - SIDE, 0.));
+	float fc = length(max(abs(p + vec3(0, -gRounding - .02, 0.)) - gSide, 0.));
 
 	return mc.x < fc ? mc : vec2(fc, float(gCubeCol[1][cubeIndex]));
 }
@@ -121,10 +124,10 @@ vec2 centerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
 	vec2	mc = oneSidedCube(p, cubeIndex),
-		sh = vec2(max(length(p.xy)-UNIT/4., length(max(abs(p-vec3(0.,0.,UNIT*.375)) - UNIT*.75, 0.))), 7);
+		sh = vec2(max(length(p.xy)-gUnit/4., length(max(abs(p-vec3(0.,0.,gUnit*.375)) - gUnit*.75, 0.))), 7);
 	
-	mc.x = max(mc.x, -(length(p+vec3(0.,0.,-UNIT))-UNIT*1.2));
-	return mc.x < sh.x ? mc : sh;
+	mc.x = max(mc.x, -(length(p+vec3(0.,0.,-gUnit))-gUnit*1.2));
+	return mc.x < sh.x || !gShaft ? mc : sh;
 }
 
 vec2 middleCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
@@ -146,18 +149,18 @@ vec2 cornerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 	p.yz *= rot2(rot.y);
 	p.xz *= rot2(rot.z);
 	vec2 mc = twoSidedCube(p, cubeIndex);
-	float sc = length(max(abs(p + vec3(-ROUNDING - .02, 0., 0.)) - SIDE, 0.));
+	float sc = length(max(abs(p + vec3(-gRounding - .02, 0., 0.)) - gSide, 0.));
 
 	if (sc < mc.x) mc = vec2(sc, float(gCubeCol[2][cubeIndex]));
 	vec3 cubepos = p + vec3(9., 9., -9.);
-	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(UNIT,UNIT,-UNIT))-UNIT*1.18);
+	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(gUnit,gUnit,-gUnit))-gUnit*1.18);
 	mc.x = min(mc.x, bit);
 	return mc;
 }
 
 vec2 map(vec3 p)
 {
-	float tt = clamp(iTime / 8.5, 0., 1.) * PI * 2;
+	float tt = clamp(gTimeMod / 9., 0., 1.) * PI * 2;
 	p.xy *= rot2(tt);
 	//p.zy *= rot2(tt);
 	vec2 res = vec2(9e9, 0);
@@ -202,25 +205,26 @@ vec2 map(vec3 p)
 		}
 		/*
 		if (offset.x == off.z) {
-			pa.yz *= rot2(iTime);
+			pa.yz *= rot2(gTimeMod);
 		}
 		if (offset.x == off.y) {
-			pa.yz *= rot2(-iTime);
+			pa.yz *= rot2(-gTimeMod);
 		}
 		if (offset.x == off.x) {
-			pa.yz *= rot2(-iTime * 0.8);
+			pa.yz *= rot2(-gTimeMod * 0.8);
 		}
 		if (offset.y == off.z) {
-			//pa.xz *= rot2(iTime);
+			//pa.xz *= rot2(gTimeMod);
 		}
 		if (
 			!(offset.x == 0. && offset.y == 0.) &&
 			!(offset.x == 0. && offset.z == 0.) &&
 			!(offset.y == 0. && offset.z == 0.)
 		) {
-			offset *= sin(iTime) + 2.;
+			offset *= sin(gTimeMod) + 2.;
 		}
 		*/
+		offset *= gOffsetStuff;
 		vec3 rot = gCubeRot[i];
 		if (gCubeCol[1][i] == _x_) {
 			cub = centerCube(pa, i, offset, rot);
@@ -254,9 +258,9 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 		//p.z -= 10.;
 		//p.yz *= rot2(-.9);
 		//p = mod(p, 30.) - 15.;
-		//p.xy *= rot2(iTime/2.);
-		//p.yz *= rot2(iTime/3.);
-		//p.xz*=rot2(sin(p.z*0.2)*0.2+iTime);
+		//p.xy *= rot2(gTimeMod/2.);
+		//p.yz *= rot2(gTimeMod/3.);
+		//p.xz*=rot2(sin(p.z*0.2)*0.2+gTimeMod);
 		vec2 m = map(gHitPosition);
 		float distance = m.x;
 		if (distance < .03) {
@@ -297,6 +301,7 @@ in vec2 v;
 void main()
 #endif
 {
+	gTimeMod = mod(iTime, 10.);
 	gCubeCol[0][ 0] = RED; gCubeCol[1][ 0] = YLW; gCubeCol[2][ 0] = BLU;
 	gCubeCol[0][ 1] = RED; gCubeCol[1][ 1] = BLU; gCubeCol[2][ 1] = _x_;
 	gCubeCol[0][ 2] = RED; gCubeCol[1][ 2] = BLU; gCubeCol[2][ 2] = WHI;
@@ -329,7 +334,7 @@ void main()
 	for (i = 0; i < 26 - 1; i++) {
 		int index = gCubeHiddenOrder[i];
 		gCubeOpacity[index] = 1.;
-		float time = iTime > 9. ? 0. : iTime;
+		float time = gTimeMod > 9. ? 0. : gTimeMod;
 		int whatever = i >= 19 ? 21 : i + 1;
 		float until = gNumMovements * MOVEMENT_TIME_SECONDS + float(whatever) * HIDE_TIME_SECONDS;
 		if (float(until) < time) {
@@ -345,9 +350,9 @@ void main()
 		}
 	}
 	gCurrentMovement = -1;
-	for (i = 0; iTime <= 9. && i < gNumMovements; i++) {
+	for (i = 0; gTimeMod <= 9. && i < gNumMovements; i++) {
 		float until = float(i + 1) * MOVEMENT_TIME_SECONDS;
-		if (float(until) < iTime) {
+		if (float(until) < gTimeMod) {
 			int tmp;
 #define swap(a,b,c,d,e,f,g,h) tmp=gCubeCol[a][b];gCubeCol[a][b]=gCubeCol[c][d];gCubeCol[c][d]=gCubeCol[e][f];gCubeCol[e][f]=gCubeCol[g][h];gCubeCol[g][h]=tmp;
 			switch (gMovements[i]) {
@@ -396,7 +401,7 @@ void main()
 			}
 		} else {
 			gCurrentMovement = gMovements[i];
-			gCurrentMovementProgress = 1. - (float(until) - iTime) / MOVEMENT_TIME_SECONDS;
+			gCurrentMovementProgress = 1. - (float(until) - gTimeMod) / MOVEMENT_TIME_SECONDS;
 			break;
 		}
 	}
@@ -425,10 +430,26 @@ void main()
 	at.y = ro.y + sin(horzAngle) * xylen;
 	at.z = ro.z + vertAngle;
 
-	//float tt = clamp(iTime / 8.5, 0., 1.) * PI * 2 + HALFPI / 2;
+	//float tt = clamp(gTimeMod / 8.5, 0., 1.) * PI * 2 + HALFPI / 2;
 	//ro = vec3(-100 * cos(tt), 100 * sin(tt), -70 * cos(tt));
 	ro = vec3(-80, 80, -70);
 	at = vec3(0, 0, 10);
+
+	gRounding = ROUNDING;
+	gSide = SIDE;
+	gUnit = UNIT;
+	gOffsetStuff = 1.;
+	gShaft = true;
+	if (gTimeMod >= 9.) {
+		float tt = gTimeMod - 9. / 1.;
+		gRounding = mix(3.4, ROUNDING, tt);
+		gSide = 12. - gRounding;
+		gUnit = gSide * 2. + 2. * gRounding;
+		gOffsetStuff = mix(.23, 1., tt);
+		ro.z += mix(4., 0., tt);
+		at.z += mix(4., 0., tt);
+		gShaft = false;
+	}
 
 	vec3	cf = normalize(at-ro),
 		cl = normalize(cross(cf,vec3(0,0,-1))),
