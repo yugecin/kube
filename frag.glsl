@@ -161,7 +161,10 @@ vec2 cornerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 vec2 map(vec3 p)
 {
 	float tt = clamp(gTimeMod / 9., 0., 1.) * PI * 2;
-	p.xy *= rot2(tt);
+	p.xy *= rot2(tt * .9 + PI * 2. * .1);
+	if (gTimeMod > 9.) {
+		p.xy *= rot2(PI * 2. * .1 * clamp(gTimeMod - 9., 0., 1.));
+	}
 	//p.zy *= rot2(tt);
 	vec2 res = vec2(9e9, 0);
 	for (i = 0; i < 26; i++) {
