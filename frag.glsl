@@ -69,7 +69,7 @@ const int[] gCubeHiddenOrder = {
     5,
     25,
     24,
-    0,
+    17,
     11,
     3,
     6,
@@ -91,7 +91,7 @@ const int[] gCubeHiddenOrder = {
     13,
     15,
     21,
-    //17,
+    //0,
 };
 bool gHackFadeStuff;
 
@@ -157,6 +157,9 @@ vec2 cornerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 
 vec2 map(vec3 p)
 {
+	float tt = clamp(iTime / 8.5, 0., 1.) * PI * 2;
+	p.xy *= rot2(tt);
+	//p.zy *= rot2(tt);
 	vec2 res = vec2(9e9, 0);
 	for (i = 0; i < 26; i++) {
 		if (gCubeHidden[i]) {
@@ -320,28 +323,29 @@ void main()
 	gCubeCol[0][23] = GRN; gCubeCol[1][23] = ORG; gCubeCol[2][23] = YLW;
 	gCubeCol[0][24] = ORG; gCubeCol[1][24] = GRN; gCubeCol[2][24] = _x_;
 	gCubeCol[0][25] = ORG; gCubeCol[1][25] = GRN; gCubeCol[2][25] = WHI;
-	gCubeHidden[17] = false;
-	gCubeOpacity[17] = 1.;
+	gCubeHidden[0] = false;
+	gCubeOpacity[0] = 1.;
 	gHackFadeStuff = false;
 	for (i = 0; i < 26 - 1; i++) {
 		int index = gCubeHiddenOrder[i];
 		gCubeOpacity[index] = 1.;
+		float time = iTime > 9. ? 0. : iTime;
 		int whatever = i >= 19 ? 21 : i + 1;
 		float until = gNumMovements * MOVEMENT_TIME_SECONDS + float(whatever) * HIDE_TIME_SECONDS;
-		if (float(until) < iTime) {
+		if (float(until) < time) {
 			gCubeHidden[index] = true;
 		} else {
 			gCubeHidden[index] = false;
-			if (float(until - FADE_TIME_SECONDS) < iTime) {
+			if (float(until - FADE_TIME_SECONDS) < time) {
 				if (i > 21) {
 					gHackFadeStuff = true;
 				}
-				gCubeOpacity[index] = (float(until) - iTime) / FADE_TIME_SECONDS;
+				gCubeOpacity[index] = (float(until) - time) / FADE_TIME_SECONDS;
 			}
 		}
 	}
 	gCurrentMovement = -1;
-	for (i = 0; i < gNumMovements; i++) {
+	for (i = 0; iTime <= 9. && i < gNumMovements; i++) {
 		float until = float(i + 1) * MOVEMENT_TIME_SECONDS;
 		if (float(until) < iTime) {
 			int tmp;
@@ -421,6 +425,10 @@ void main()
 	at.y = ro.y + sin(horzAngle) * xylen;
 	at.z = ro.z + vertAngle;
 
+	//float tt = clamp(iTime / 8.5, 0., 1.) * PI * 2 + HALFPI / 2;
+	//ro = vec3(-100 * cos(tt), 100 * sin(tt), -70 * cos(tt));
+	ro = vec3(-80, 80, -70);
+	at = vec3(0, 0, 10);
 
 	vec3	cf = normalize(at-ro),
 		cl = normalize(cross(cf,vec3(0,0,-1))),
@@ -435,7 +443,7 @@ void main()
 			float opacity = gCubeOpacity[gHitIndex];
 			gCubeHidden[gHitIndex] = true;
 			result = march(gHitPosition, rd, 100); // TODO: how many steps?
-			vec3 without = result.x > 0. && (!gHackFadeStuff || gHitIndex == 17) ? colorHit(result, rd) : col;
+			vec3 without = result.x > 0. && (!gHackFadeStuff || gHitIndex == 0) ? colorHit(result, rd) : col;
 			shade = mix(without, shade, opacity);
 		}
 		col = shade;
