@@ -45,7 +45,7 @@ const vec3[] gCubeRot = {
 	rot.xxz, rot.xyx, rot.zxz, rot.yyx, rot.zyx, rot.yxz, rot.xzx, rot.wxz, rot.yyx,
 	rot.xyx, rot.xyx, rot.yyx, rot.xwx, rot.zyx, rot.wyx, rot.xwx, rot.xwx,
 };
-int gCubeCol1[26], gCubeCol2[26], gCubeCol3[26];
+int gCubeCol[3][26];
 bool gCubeHidden[26];
 int gHitIndex;
 #define F 0 // front
@@ -60,9 +60,9 @@ int gHitIndex;
 #define E 9 // down(reverse)
 #define B 10 // back
 #define C 11 // back(reverse)
-const int gNumMovements = 2;
+const int gNumMovements = 12;
 const int[] gMovements = {
-	F, F, V, D, L, M, F, F, M, S,
+	F, F, B, B, L, L, R, R, U, U, D, D, F, D, U, U, B, B, L, L, F, F, R, R, V, D, L, M, F, F, M, S,
 };
 int gCurrentMovement;
 float gCurrentMovementProgress;
@@ -75,7 +75,7 @@ vec2 oneSidedCube(vec3 p, int cubeIndex)
 	vec2 mc = vec2(length(max(abs(p) - SIDE, 0.)) - ROUNDING, 0);
 	float tc = length(max(abs(p + vec3(0., 0., ROUNDING + .02)) - SIDE, 0.));
 
-	return mc.x < tc ? mc : vec2(tc, float(gCubeCol1[cubeIndex]));
+	return mc.x < tc ? mc : vec2(tc, float(gCubeCol[0][cubeIndex]));
 }
 
 vec2 twoSidedCube(vec3 p, int cubeIndex)
@@ -83,7 +83,7 @@ vec2 twoSidedCube(vec3 p, int cubeIndex)
 	vec2 mc = oneSidedCube(p, cubeIndex);
 	float fc = length(max(abs(p + vec3(0, -ROUNDING - .02, 0.)) - SIDE, 0.));
 
-	return mc.x < fc ? mc : vec2(fc, float(gCubeCol2[cubeIndex]));
+	return mc.x < fc ? mc : vec2(fc, float(gCubeCol[1][cubeIndex]));
 }
 
 // also includes the shaft
@@ -121,7 +121,7 @@ vec2 cornerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 	vec2 mc = twoSidedCube(p, cubeIndex);
 	float sc = length(max(abs(p + vec3(-ROUNDING - .02, 0., 0.)) - SIDE, 0.));
 
-	if (sc < mc.x) mc = vec2(sc, float(gCubeCol3[cubeIndex]));
+	if (sc < mc.x) mc = vec2(sc, float(gCubeCol[2][cubeIndex]));
 	vec3 cubepos = p + vec3(9., 9., -9.);
 	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(UNIT,UNIT,-UNIT))-UNIT*1.18);
 	mc.x = min(mc.x, bit);
@@ -144,7 +144,30 @@ vec2 map(vec3 p)
 				pa.xz *= rot2(HALFPI * gCurrentMovementProgress);
 			}
 			break;
-		case V:
+		case L:
+			if (offset.x == off.z) {
+				pa.yz *= rot2(HALFPI * gCurrentMovementProgress);
+			}
+			break;
+		case R:
+			if (offset.x == off.y) {
+				pa.zy *= rot2(HALFPI * gCurrentMovementProgress);
+			}
+			break;
+		case B:
+			if (offset.y == off.z) {
+				pa.zx *= rot2(HALFPI * gCurrentMovementProgress);
+			}
+			break;
+		case U:
+			if (offset.z == off.z) {
+				pa.xy *= rot2(HALFPI * gCurrentMovementProgress);
+			}
+			break;
+		case D:
+			if (offset.z == off.y) {
+				pa.yx *= rot2(HALFPI * gCurrentMovementProgress);
+			}
 			break;
 		}
 		/*
@@ -169,9 +192,9 @@ vec2 map(vec3 p)
 		}
 		*/
 		vec3 rot = gCubeRot[i];
-		if (gCubeCol2[i] == _x_) {
+		if (gCubeCol[1][i] == _x_) {
 			cub = centerCube(pa, i, offset, rot);
-		} else if (gCubeCol3[i] == _x_) {
+		} else if (gCubeCol[2][i] == _x_) {
 			cub = middleCube(pa, i, offset, rot);
 		} else {
 			cub = cornerCube(pa, i, offset, rot);
@@ -244,33 +267,33 @@ in vec2 v;
 void main()
 #endif
 {
-	gCubeCol1[ 0] = RED; gCubeCol2[ 0] = YLW; gCubeCol3[ 0] = BLU;
-	gCubeCol1[ 0] = RED; gCubeCol2[ 0] = YLW; gCubeCol3[ 0] = BLU;
-	gCubeCol1[ 1] = RED; gCubeCol2[ 1] = BLU; gCubeCol3[ 1] = _x_;
-	gCubeCol1[ 2] = RED; gCubeCol2[ 2] = BLU; gCubeCol3[ 2] = WHI;
-	gCubeCol1[ 3] = RED; gCubeCol2[ 3] = YLW; gCubeCol3[ 3] = _x_;
-	gCubeCol1[ 4] = RED; gCubeCol2[ 4] = _x_; gCubeCol3[ 4] = _x_;
-	gCubeCol1[ 5] = RED; gCubeCol2[ 5] = WHI; gCubeCol3[ 5] = _x_;
-	gCubeCol1[ 6] = RED; gCubeCol2[ 6] = GRN; gCubeCol3[ 6] = YLW;
-	gCubeCol1[ 7] = RED; gCubeCol2[ 7] = GRN; gCubeCol3[ 7] = _x_;
-	gCubeCol1[ 8] = RED; gCubeCol2[ 8] = WHI; gCubeCol3[ 8] = GRN;
-	gCubeCol1[ 9] = YLW; gCubeCol2[ 9] = BLU; gCubeCol3[ 9] = _x_;
-	gCubeCol1[10] = BLU; gCubeCol2[10] = _x_; gCubeCol3[10] = _x_;
-	gCubeCol1[11] = BLU; gCubeCol2[11] = WHI; gCubeCol3[11] = _x_;
-	gCubeCol1[12] = YLW; gCubeCol2[12] = _x_; gCubeCol3[12] = _x_;
-	gCubeCol1[13] = WHI; gCubeCol2[13] = _x_; gCubeCol3[13] = _x_;
-	gCubeCol1[14] = GRN; gCubeCol2[14] = YLW; gCubeCol3[14] = _x_;
-	gCubeCol1[15] = GRN; gCubeCol2[15] = _x_; gCubeCol3[15] = _x_;
-	gCubeCol1[16] = WHI; gCubeCol2[16] = GRN; gCubeCol3[16] = _x_;
-	gCubeCol1[17] = YLW; gCubeCol2[17] = ORG; gCubeCol3[17] = BLU;
-	gCubeCol1[18] = BLU; gCubeCol2[18] = ORG; gCubeCol3[18] = _x_;
-	gCubeCol1[19] = BLU; gCubeCol2[19] = ORG; gCubeCol3[19] = WHI;
-	gCubeCol1[20] = YLW; gCubeCol2[20] = ORG; gCubeCol3[20] = _x_;
-	gCubeCol1[21] = ORG; gCubeCol2[21] = _x_; gCubeCol3[21] = _x_;
-	gCubeCol1[22] = WHI; gCubeCol2[22] = ORG; gCubeCol3[22] = _x_;
-	gCubeCol1[23] = GRN; gCubeCol2[23] = ORG; gCubeCol3[23] = YLW;
-	gCubeCol1[24] = ORG; gCubeCol2[24] = GRN; gCubeCol3[24] = _x_;
-	gCubeCol1[25] = ORG; gCubeCol2[25] = GRN; gCubeCol3[25] = WHI;
+	gCubeCol[0][ 0] = RED; gCubeCol[1][ 0] = YLW; gCubeCol[2][ 0] = BLU;
+	gCubeCol[0][ 0] = RED; gCubeCol[1][ 0] = YLW; gCubeCol[2][ 0] = BLU;
+	gCubeCol[0][ 1] = RED; gCubeCol[1][ 1] = BLU; gCubeCol[2][ 1] = _x_;
+	gCubeCol[0][ 2] = RED; gCubeCol[1][ 2] = BLU; gCubeCol[2][ 2] = WHI;
+	gCubeCol[0][ 3] = RED; gCubeCol[1][ 3] = YLW; gCubeCol[2][ 3] = _x_;
+	gCubeCol[0][ 4] = RED; gCubeCol[1][ 4] = _x_; gCubeCol[2][ 4] = _x_;
+	gCubeCol[0][ 5] = RED; gCubeCol[1][ 5] = WHI; gCubeCol[2][ 5] = _x_;
+	gCubeCol[0][ 6] = RED; gCubeCol[1][ 6] = GRN; gCubeCol[2][ 6] = YLW;
+	gCubeCol[0][ 7] = RED; gCubeCol[1][ 7] = GRN; gCubeCol[2][ 7] = _x_;
+	gCubeCol[0][ 8] = RED; gCubeCol[1][ 8] = WHI; gCubeCol[2][ 8] = GRN;
+	gCubeCol[0][ 9] = YLW; gCubeCol[1][ 9] = BLU; gCubeCol[2][ 9] = _x_;
+	gCubeCol[0][10] = BLU; gCubeCol[1][10] = _x_; gCubeCol[2][10] = _x_;
+	gCubeCol[0][11] = BLU; gCubeCol[1][11] = WHI; gCubeCol[2][11] = _x_;
+	gCubeCol[0][12] = YLW; gCubeCol[1][12] = _x_; gCubeCol[2][12] = _x_;
+	gCubeCol[0][13] = WHI; gCubeCol[1][13] = _x_; gCubeCol[2][13] = _x_;
+	gCubeCol[0][14] = GRN; gCubeCol[1][14] = YLW; gCubeCol[2][14] = _x_;
+	gCubeCol[0][15] = GRN; gCubeCol[1][15] = _x_; gCubeCol[2][15] = _x_;
+	gCubeCol[0][16] = WHI; gCubeCol[1][16] = GRN; gCubeCol[2][16] = _x_;
+	gCubeCol[0][17] = YLW; gCubeCol[1][17] = ORG; gCubeCol[2][17] = BLU;
+	gCubeCol[0][18] = BLU; gCubeCol[1][18] = ORG; gCubeCol[2][18] = _x_;
+	gCubeCol[0][19] = BLU; gCubeCol[1][19] = ORG; gCubeCol[2][19] = WHI;
+	gCubeCol[0][20] = YLW; gCubeCol[1][20] = ORG; gCubeCol[2][20] = _x_;
+	gCubeCol[0][21] = ORG; gCubeCol[1][21] = _x_; gCubeCol[2][21] = _x_;
+	gCubeCol[0][22] = WHI; gCubeCol[1][22] = ORG; gCubeCol[2][22] = _x_;
+	gCubeCol[0][23] = GRN; gCubeCol[1][23] = ORG; gCubeCol[2][23] = YLW;
+	gCubeCol[0][24] = ORG; gCubeCol[1][24] = GRN; gCubeCol[2][24] = _x_;
+	gCubeCol[0][25] = ORG; gCubeCol[1][25] = GRN; gCubeCol[2][25] = WHI;
 	for (i = 0; i < 26; i++) {
 		gCubeHidden[i] = false;
 	}
@@ -279,25 +302,49 @@ void main()
 		float until = float(i + 1) * MOVEMENT_TIME_SECONDS;
 		if (float(until) < iTime) {
 			int tmp;
+#define swap(a,b,c,d,e,f,g,h) tmp=gCubeCol[a][b];gCubeCol[a][b]=gCubeCol[c][d];gCubeCol[c][d]=gCubeCol[e][f];gCubeCol[e][f]=gCubeCol[g][h];gCubeCol[g][h]=tmp;
 			switch (gMovements[i]) {
 			case F:
-				tmp = gCubeCol1[2];
-				gCubeCol1[2] = gCubeCol2[0];
-				gCubeCol2[0] = gCubeCol2[17];
-				gCubeCol2[17] = gCubeCol3[19];
-				gCubeCol3[19] = tmp;
-				tmp = gCubeCol2[11];
-				gCubeCol2[11] = gCubeCol1[1];
-				gCubeCol1[1] = gCubeCol1[9];
-				gCubeCol1[9] = gCubeCol2[18];
-				gCubeCol2[18] = tmp;
-				tmp = gCubeCol2[19];
-				gCubeCol2[19] = gCubeCol3[2];
-				gCubeCol3[2] = gCubeCol1[0];
-				gCubeCol1[0] = gCubeCol1[17];
-				gCubeCol1[17] = tmp;
+				swap(0, 2, 1, 0, 1, 17, 2, 19);
+				swap(1, 11, 0, 1, 0, 9, 1, 18);
+				swap(1, 19, 2, 2, 0, 0, 0, 17);
+				swap(1, 2, 2, 0, 2, 17, 0, 19);
+				swap(1, 1, 1, 9, 0, 18, 0, 11);
 				break;
 			case L:
+				swap(0, 0, 1, 6, 1, 23, 2, 17);
+				swap(2, 0, 0, 6, 0, 23, 1, 17);
+				swap(1, 9, 0, 3, 0, 14, 1, 20);
+				swap(2, 6, 2, 23, 0, 17, 1, 0);
+				swap(1, 3, 1, 14, 0, 20, 0, 9);
+				break;
+			case R:
+				swap(0, 2, 0, 19, 0, 25, 2, 8);
+				swap(1, 25, 0, 8, 1, 2, 1, 19);
+				swap(0, 5, 0, 11, 1, 22, 1, 16);
+				swap(2, 2, 2, 19, 2, 25, 1, 8);
+				swap(1, 5, 1, 11, 0, 22, 0, 16);
+				break;
+			case B:
+				swap(0, 8, 2, 25, 1, 23, 2, 6);
+				swap(0, 6, 1, 8, 0, 25, 2, 23);
+				swap(0, 7, 0, 16, 0, 24, 1, 14);
+				swap(2, 8, 1, 25, 0, 23, 1, 6);
+				swap(1, 7, 1, 16, 1, 24, 0, 14);
+				break;
+			case U:
+				swap(1, 6, 1, 0, 1, 2, 1, 8);
+				swap(2, 8, 2, 6, 2, 0, 2, 2);
+				swap(1, 7, 1, 3, 1, 1, 1, 5);
+				swap(0, 6, 0, 0, 0, 2, 0, 8);
+				swap(0, 7, 0, 3, 0, 1, 0, 5);
+				break;
+			case D:
+				swap(2, 17, 2, 23, 1, 25, 2, 19);
+				swap(2, 25, 0, 19, 0, 17, 0, 23);
+				swap(0, 18, 0, 20, 1, 24, 0, 22);
+				swap(1, 17, 1, 23, 0, 25, 1, 19);
+				swap(1, 18, 1, 20, 0, 24, 1, 22);
 				break;
 			}
 		} else {
