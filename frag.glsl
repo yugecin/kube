@@ -55,9 +55,9 @@ int gHitIndex;
 #define U 6 // up
 #define D 8 // down
 #define B 10 // back
-const int gNumMovements = 17;
+const int gNumMovements = 12;
 const int[] gMovements = {
-	F, B, U, U, D, U, R, L, B, B, R, L, L, F, F, B, U
+	F, F, B, B, L, L, R, R, U, U, D, D
 };
 int gCurrentMovement;
 float gCurrentMovementProgress;
@@ -68,30 +68,32 @@ const int[] gCubeHiddenOrder = {
     9,
     5,
     25,
-    12,
     24,
     0,
     11,
     3,
     6,
     8,
-    15,
     2,
-    4,
-    21,
     14,
-    10,
     19,
     1,
     20,
-    13,
     22,
     16,
     23,
     7,
     18,
+    //
+    4,
+    10,
+    12,
+    13,
+    15,
+    21,
     //17,
 };
+bool gHackFadeStuff;
 
 mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 
@@ -293,7 +295,6 @@ void main()
 #endif
 {
 	gCubeCol[0][ 0] = RED; gCubeCol[1][ 0] = YLW; gCubeCol[2][ 0] = BLU;
-	gCubeCol[0][ 0] = RED; gCubeCol[1][ 0] = YLW; gCubeCol[2][ 0] = BLU;
 	gCubeCol[0][ 1] = RED; gCubeCol[1][ 1] = BLU; gCubeCol[2][ 1] = _x_;
 	gCubeCol[0][ 2] = RED; gCubeCol[1][ 2] = BLU; gCubeCol[2][ 2] = WHI;
 	gCubeCol[0][ 3] = RED; gCubeCol[1][ 3] = YLW; gCubeCol[2][ 3] = _x_;
@@ -321,15 +322,20 @@ void main()
 	gCubeCol[0][25] = ORG; gCubeCol[1][25] = GRN; gCubeCol[2][25] = WHI;
 	gCubeHidden[17] = false;
 	gCubeOpacity[17] = 1.;
+	gHackFadeStuff = false;
 	for (i = 0; i < 26 - 1; i++) {
 		int index = gCubeHiddenOrder[i];
 		gCubeOpacity[index] = 1.;
-		float until = gNumMovements * MOVEMENT_TIME_SECONDS + float(i + 1) * HIDE_TIME_SECONDS;
+		int whatever = i >= 19 ? 21 : i + 1;
+		float until = gNumMovements * MOVEMENT_TIME_SECONDS + float(whatever) * HIDE_TIME_SECONDS;
 		if (float(until) < iTime) {
 			gCubeHidden[index] = true;
 		} else {
 			gCubeHidden[index] = false;
 			if (float(until - FADE_TIME_SECONDS) < iTime) {
+				if (i > 21) {
+					gHackFadeStuff = true;
+				}
 				gCubeOpacity[index] = (float(until) - iTime) / FADE_TIME_SECONDS;
 			}
 		}
@@ -429,7 +435,7 @@ void main()
 			float opacity = gCubeOpacity[gHitIndex];
 			gCubeHidden[gHitIndex] = true;
 			result = march(gHitPosition, rd, 100); // TODO: how many steps?
-			vec3 without = result.x > 0. ? colorHit(result, rd) : col;
+			vec3 without = result.x > 0. && (!gHackFadeStuff || gHitIndex == 17) ? colorHit(result, rd) : col;
 			shade = mix(without, shade, opacity);
 		}
 		col = shade;
