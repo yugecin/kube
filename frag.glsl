@@ -46,27 +46,52 @@ const vec3[] gCubeRot = {
 	rot.xyx, rot.xyx, rot.yyx, rot.xwx, rot.zyx, rot.wyx, rot.xwx, rot.xwx,
 };
 int gCubeCol[3][26];
+float gCubeOpacity[26];
 bool gCubeHidden[26];
 int gHitIndex;
 #define F 0 // front
-#define G 1 // front(reverse)
 #define L 2 // left
-#define M 3 // left(reverse)
 #define R 4 // right
-#define S 5 // right(reverse)
 #define U 6 // up
-#define V 7 // up(reverse)
 #define D 8 // down
-#define E 9 // down(reverse)
 #define B 10 // back
-#define C 11 // back(reverse)
-const int gNumMovements = 12;
+const int gNumMovements = 17;
 const int[] gMovements = {
-	F, F, B, B, L, L, R, R, U, U, D, D, F, D, U, U, B, B, L, L, F, F, R, R, V, D, L, M, F, F, M, S,
+	F, B, U, U, D, U, R, L, B, B, R, L, L, F, F, B, U
 };
 int gCurrentMovement;
 float gCurrentMovementProgress;
-const float MOVEMENT_TIME_SECONDS = 1.;
+const float MOVEMENT_TIME_SECONDS = .3;
+const float HIDE_TIME_SECONDS = .2;
+const float FADE_TIME_SECONDS = .4;
+const int[] gCubeHiddenOrder = {
+    9,
+    5,
+    25,
+    12,
+    24,
+    0,
+    11,
+    3,
+    6,
+    8,
+    15,
+    2,
+    4,
+    21,
+    14,
+    10,
+    19,
+    1,
+    20,
+    13,
+    22,
+    16,
+    23,
+    7,
+    18,
+    //17,
+};
 
 mat2 rot2(float a){float s=sin(a),c=cos(a);return mat2(c,s,-s,c);}
 
@@ -294,8 +319,20 @@ void main()
 	gCubeCol[0][23] = GRN; gCubeCol[1][23] = ORG; gCubeCol[2][23] = YLW;
 	gCubeCol[0][24] = ORG; gCubeCol[1][24] = GRN; gCubeCol[2][24] = _x_;
 	gCubeCol[0][25] = ORG; gCubeCol[1][25] = GRN; gCubeCol[2][25] = WHI;
-	for (i = 0; i < 26; i++) {
-		gCubeHidden[i] = false;
+	gCubeHidden[17] = false;
+	gCubeOpacity[17] = 1.;
+	for (i = 0; i < 26 - 1; i++) {
+		int index = gCubeHiddenOrder[i];
+		gCubeOpacity[index] = 1.;
+		float until = gNumMovements * MOVEMENT_TIME_SECONDS + float(i + 1) * HIDE_TIME_SECONDS;
+		if (float(until) < iTime) {
+			gCubeHidden[index] = true;
+		} else {
+			gCubeHidden[index] = false;
+			if (float(until - FADE_TIME_SECONDS) < iTime) {
+				gCubeOpacity[index] = (float(until) - iTime) / FADE_TIME_SECONDS;
+			}
+		}
 	}
 	gCurrentMovement = -1;
 	for (i = 0; i < gNumMovements; i++) {
@@ -388,14 +425,13 @@ void main()
 
 	if (result.x > 0.) { // hit
 		vec3 shade = colorHit(result, rd);
-		/*
-		if (gHitIndex == 0) {
+		if (gCubeOpacity[gHitIndex] < 1.) {
+			float opacity = gCubeOpacity[gHitIndex];
 			gCubeHidden[gHitIndex] = true;
 			result = march(gHitPosition, rd, 100); // TODO: how many steps?
-			vec3 shade2 = result.x > 0. ? colorHit(result, rd) : col;
-			shade = mix(shade, shade2, sin(iTime) * .5 + .5);
+			vec3 without = result.x > 0. ? colorHit(result, rd) : col;
+			shade = mix(without, shade, opacity);
 		}
-		*/
 		col = shade;
 	}
 
