@@ -99,7 +99,7 @@ void WinMainCRTStartup(void)
 #endif
 		k,tex;
 #ifndef nofullscreen
-	//ChangeDisplaySettings(&dm,CDS_FULLSCREEN);
+	ChangeDisplaySettings(&dm,CDS_FULLSCREEN);
 #endif
 
 #ifdef registerclass
