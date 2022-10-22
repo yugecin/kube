@@ -349,7 +349,7 @@ void main()
 	for (i = 0; i < 26 - 1; i++) {
 		int index = gCubeHiddenOrder[i];
 		gCubeOpacity[index] = 1.;
-		float time = gTimeMod > 9. ? 0. : gTimeMod;
+		float time = gTimeMod >= 9. ? 0. : gTimeMod;
 		int whatever = i >= 19 ? 21 : i + 1;
 		float until = gNumMovements * MOVEMENT_TIME_SECONDS + float(whatever) * HIDE_TIME_SECONDS;
 		if (float(until) < time) {
@@ -367,7 +367,7 @@ void main()
 
 	gCurrentMovement = -1;
 	gCurrentMovementProgress = 0.;
-	for (i = 0; gTimeMod <= 9. && i < gNumMovements; i++) {
+	for (i = 0; gTimeMod < 9. && i < gNumMovements; i++) {
 		float until = float(i + 1) * MOVEMENT_TIME_SECONDS;
 		if (float(until) < gTimeMod) {
 			int tmp;
@@ -448,7 +448,7 @@ void main()
 	gOffsetStuff = 1.;
 	gShaft = true;
 	if (gTimeMod >= 9.) {
-		float tt = gTimeMod - 9. / 1.;
+		float tt = gTimeMod - 9.;
 		gRounding = mix(3.4, ROUNDING, tt);
 		gSide = 12. - gRounding;
 		gUnit = gSide * 2. + 2. * gRounding;
