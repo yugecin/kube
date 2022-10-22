@@ -1,0 +1,65 @@
+//// Rekursive Rubik's
+
+released at TRSAC, largely partycoded
+requires at least OpenGL 4.3
+Crinkler was used to link and compress the exe
+
+The executable should auto exit after 60 seconds,
+press ESC at any time to exit manually.
+
+The source will be put on ShaderToy at https://www.shadertoy.com/view/NtVfzd at
+some point (it's set to private at time of writing so check back later if it
+says that it's not found). The code started nice[citation needed], but quickly
+went to shit when deadline stress increased and quick hacks were written. Also
+doesn't help to be sleep deprived and experiencing vertigo from the journey
+towards the party :D Now it's a mess but it does what it need and I'm not
+touching it anymore (nice thing about demos)... Ah shit I still need to change
+things to make it run on GLSL ES for ShaderToy...
+
+I've had some issues with performance here, what a scare when the staff tested
+it on the compomachines and it wasn't smooth at all. Luckily some small tricks
+made it better (thanks awildbrysen for being my remote QA and reporting on the
+performance!). It's still not really not performant, my laptop can't run it
+smooothly at all at 720p, but oh well at least there's the rendered webm.
+
+
+
+//// files
+
+kube.nfo
+	you're reading it
+
+kube.webm
+	a recording rendered to webm format at some resolution
+
+kube-1920p.exe
+	runs fullscreen at 1920x720
+
+kube-720p.exe
+	runs fullscreen at 1280x720
+
+kube-720p-windowed-debug.exe
+	runs windowed at 1280x720. If the shader compilation info log is not
+	empty, it will show that info in a messagebox and exit the process.
+
+kube-entry-screenshot.png
+	the screenshot that was used when uploading the entry to the partysystem
+
+
+//// greetings & acknowledgements
+
+evvvvil, 0b5vr, Flopine, LJ, yx, ferris, all other awesome shader coding people
+that I'm currently forgetting
+
+The code that does the lighting was copied and edited from evvvvil's shader at
+https://www.shadertoy.com/view/sdVczz
+
+Special thanks to awildbrysen, for being my remote QA person with a GTX 3080
+while I was at the party, testing and letting me know how much performance
+improvements I was making, since my laptop can't cope with this.
+
+
+
+//// eof
+
+- yugecin / RBBS
