@@ -3,7 +3,7 @@
 #define shadertoy 0
 #if shadertoy == 0
 #define iTime fpar[0].x
-#define debugmov 1 //noexport
+#define debugmov 0 //noexport
 layout (location=0) uniform vec4 fpar[2];
 layout (location=2) uniform vec4 debug[2]; //noexport
 #endif
@@ -49,7 +49,7 @@ const vec3[] gCubeRot = {
 int gCubeCol[3][26];
 float gCubeOpacity[26];
 bool gCubeHidden[26];
-int gHitIndex;
+int gHitIndex = 0;
 #define F 0 // front
 #define L 2 // left
 #define R 4 // right
@@ -353,6 +353,7 @@ void main()
 		}
 	}
 	gCurrentMovement = -1;
+	gCurrentMovementProgress = 0.;
 	for (i = 0; gTimeMod <= 9. && i < gNumMovements; i++) {
 		float until = float(i + 1) * MOVEMENT_TIME_SECONDS;
 		if (float(until) < gTimeMod) {
@@ -411,32 +412,22 @@ void main()
 
 	vec2 uv=v;uv.y/=1.77;
 
-	vec3 ro;
-	vec3 at = vec3(0, 0, -25);
-	//vec3 ro = vec3(20, -50, -20);
-	//ro.x = fpar[0].y/10.;
-	//vec2 m = iMouse.xy/iResolution.xy;
-	//ro.yz *= rot2(-m.y*PI+1.);
-	//ro.xy *= rot2(-m.x*TAU);
-	float horzAngle, vertAngle;
+	vec3 ro = vec3(-80, 80, -70);
+	vec3 at = vec3(0, 0, 10);
+
 #if debugmov //noexport
 	ro = debug[0].xyz; //noexport
-	vertAngle = debug[1].y/20.; //noexport
-	horzAngle = debug[1].x/20.; //noexport
+	float vertAngle = debug[1].y/20.; //noexport
+	float horzAngle = debug[1].x/20.; //noexport
+	if (abs(vertAngle) < .001) { //noexport
+		vertAngle = .001; //noexport
+	} //noexport
+	float xylen = sin(vertAngle); //noexport
+	vertAngle = cos(vertAngle); //noexport
+	at.x = ro.x + cos(horzAngle) * xylen; //noexport
+	at.y = ro.y + sin(horzAngle) * xylen; //noexport
+	at.z = ro.z + vertAngle; //noexport
 #endif //noexport
-	if (abs(vertAngle) < .001) {
-		vertAngle = .001;
-	}
-	float xylen = sin(vertAngle);
-	vertAngle = cos(vertAngle);
-	at.x = ro.x + cos(horzAngle) * xylen;
-	at.y = ro.y + sin(horzAngle) * xylen;
-	at.z = ro.z + vertAngle;
-
-	//float tt = clamp(gTimeMod / 8.5, 0., 1.) * PI * 2 + HALFPI / 2;
-	//ro = vec3(-100 * cos(tt), 100 * sin(tt), -70 * cos(tt));
-	ro = vec3(-80, 80, -70);
-	at = vec3(0, 0, 10);
 
 	gRounding = ROUNDING;
 	gSide = SIDE;
