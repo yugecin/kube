@@ -166,7 +166,11 @@ vec2 map(vec3 p)
 		p.xy *= rot2(PI * 2. * .1 * clamp(gTimeMod - 9., 0., 1.));
 	}
 	//p.zy *= rot2(tt);
-	vec2 res = vec2(9e9, 0);
+	float boundingbox = length(max(abs(p) - vec3(gUnit * 2.1), 0.));
+	if (boundingbox > .2) {
+		return vec2(boundingbox, 0.);
+	}
+	vec2 res = vec2(9e9, 0.);
 	for (i = 0; i < 26; i++) {
 		if (gCubeHidden[i]) {
 			continue;
@@ -450,14 +454,14 @@ void main()
 		rd = mat3(cl,normalize(cross(cl,cf)),cf)*normalize(vec3(uv,1)),
 		col = vec3(.1) - length(uv) * .05;
 
-	vec4 result = march(ro, rd, 300);
+	vec4 result = march(ro, rd, 100);
 
 	if (result.x > 0.) { // hit
 		vec3 shade = colorHit(result, rd);
 		if (gCubeOpacity[gHitIndex] < 1.) {
 			float opacity = gCubeOpacity[gHitIndex];
 			gCubeHidden[gHitIndex] = true;
-			result = march(gHitPosition, rd, 100); // TODO: how many steps?
+			result = march(gHitPosition, rd, 50); // TODO: how many steps?
 			vec3 without = result.x > 0. && (!gHackFadeStuff || gHitIndex == 0) ? colorHit(result, rd) : col;
 			shade = mix(without, shade, opacity);
 		}
