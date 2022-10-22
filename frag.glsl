@@ -119,12 +119,8 @@ vec2 twoSidedCube(vec3 p, int cubeIndex)
 }
 
 // also includes the shaft
-vec2 centerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
+vec2 centerCube(vec3 p, int cubeIndex)
 {
-	p -= pos;
-	p.xy *= rot2(rot.x);
-	p.yz *= rot2(rot.y);
-	p.xz *= rot2(rot.z);
 	vec2	mc = oneSidedCube(p, cubeIndex),
 		sh = vec2(max(length(p.xy)-gUnit/4., length(max(abs(p-vec3(0.,0.,gUnit*.375)) - gUnit*.75, 0.))), 7);
 	
@@ -132,24 +128,16 @@ vec2 centerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
 	return mc.x < sh.x || !gShaft ? mc : sh;
 }
 
-vec2 middleCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
+vec2 middleCube(vec3 p, int cubeIndex)
 {
-	p -= pos;
-	p.xy *= rot2(rot.x);
-	p.yz *= rot2(rot.y);
-	p.xz *= rot2(rot.z);
 	vec2 res = twoSidedCube(p, cubeIndex);
 	res.x = max(res.x, -(length(p+vec3(0., 62., -62.))-80.));
 	res.x = min(res.x, length(max(abs(p - vec3(0., -7., 7.)) - vec3(7., 9., 9.), 0.)));
 	return res;
 }
 
-vec2 cornerCube(vec3 p, int cubeIndex, vec3 pos, vec3 rot)
+vec2 cornerCube(vec3 p, int cubeIndex)
 {
-	p -= pos;
-	p.xy *= rot2(rot.x);
-	p.yz *= rot2(rot.y);
-	p.xz *= rot2(rot.z);
 	vec2 mc = twoSidedCube(p, cubeIndex);
 	float sc = length(max(abs(p + vec3(-gRounding - .02, 0., 0.)) - gSide, 0.));
 
@@ -169,7 +157,7 @@ vec2 map(vec3 p)
 	}
 	//p.zy *= rot2(tt);
 	float boundingbox = length(max(abs(p) - vec3(gUnit * 2.1), 0.));
-	if (boundingbox > .2) {
+	if (boundingbox > .1) {
 		return vec2(boundingbox, 0.);
 	}
 	vec2 res = vec2(9e9, 0.);
@@ -233,14 +221,16 @@ vec2 map(vec3 p)
 			offset *= sin(gTimeMod) + 2.;
 		}
 		*/
-		offset *= gOffsetStuff;
-		vec3 rot = gCubeRot[i];
+		pa -= offset * gOffsetStuff;
+		pa.xy *= rot2(gCubeRot[i].x);
+		pa.yz *= rot2(gCubeRot[i].y);
+		pa.xz *= rot2(gCubeRot[i].z);
 		if (gCubeCol[1][i] == _x_) {
-			cub = centerCube(pa, i, offset, rot);
+			cub = centerCube(pa, i);
 		} else if (gCubeCol[2][i] == _x_) {
-			cub = middleCube(pa, i, offset, rot);
+			cub = middleCube(pa, i);
 		} else {
-			cub = cornerCube(pa, i, offset, rot);
+			cub = cornerCube(pa, i);
 		}
 		if (cub.x < res.x) {
 			res = cub;
