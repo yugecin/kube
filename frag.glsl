@@ -226,11 +226,14 @@ vec2 map(vec3 p)
 		pa.yz *= rot2(gCubeRot[i].y);
 		pa.xz *= rot2(gCubeRot[i].z);
 		if (gCubeCol[1][i] == _x_) {
-			cub = centerCube(pa, i);
+			float boundingbox = length(max(abs(pa - vec3(0., 0., gUnit * .36)) - vec3(gUnit * .55, gUnit * .55, gUnit * .9), 0.));
+			cub = boundingbox < .1 ? centerCube(pa, i) : vec2(boundingbox, 0.);
 		} else if (gCubeCol[2][i] == _x_) {
-			cub = middleCube(pa, i);
+			float boundingbox = length(max(abs(pa) - vec3(gUnit * .7), 0.));
+			cub = boundingbox < .1 ? middleCube(pa, i) : vec2(boundingbox, 0.);
 		} else {
-			cub = cornerCube(pa, i);
+			float boundingbox = length(max(abs(pa) - vec3(gUnit * .7), 0.));
+			cub = boundingbox < .1 ? cornerCube(pa, i) : vec2(boundingbox, 0.);
 		}
 		if (cub.x < res.x) {
 			res = cub;
