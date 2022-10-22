@@ -50,6 +50,8 @@ int gCubeCol[3][26];
 float gCubeOpacity[26];
 bool gCubeHidden[26];
 int gHitIndex = 0;
+int gExclusiveCube = -1; // if set, only that cube will be considered.
+                         //useful for consecutive map() calls for lighting after we already know what cube gets hit
 #define F 0 // front
 #define L 2 // left
 #define R 4 // right
@@ -172,7 +174,7 @@ vec2 map(vec3 p)
 	}
 	vec2 res = vec2(9e9, 0.);
 	for (i = 0; i < 26; i++) {
-		if (gCubeHidden[i]) {
+		if (gCubeHidden[i] || (gExclusiveCube != -1 && gExclusiveCube != i)) {
 			continue;
 		}
 		vec3 offset = gCubeOff[i];
@@ -283,6 +285,7 @@ vec4 march(vec3 ro, vec3 rd, int maxSteps)
 
 vec3 colorHit(vec4 result, vec3 rd)
 {
+	gExclusiveCube = gHitIndex;
 	vec3 shade = vec3(0);
 	int material = int(result.w);
 	if (0 <= material && material <= 7) {
@@ -297,6 +300,7 @@ vec3 colorHit(vec4 result, vec3 rd)
 	float scat = smoothstep(0., 1., map(gHitPosition - rd * .4).x / .4); // "sub surface scattering"
 	shade = mix(specular + shade * (ambientOcc + .2) * (diffuse + scat * .1), shade, fresnel);
 	//shade = mix(background, shade, exp(-.002 * result.y * result.y * result.y));
+	gExclusiveCube = -1;
 	return shade;
 }
 
