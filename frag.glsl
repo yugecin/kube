@@ -164,7 +164,7 @@ vec2 map(vec3 p)
 {
 	float tt = clamp(gTimeMod / 9., 0., 1.) * PI * 2;
 	p.xy *= rot2(tt * .9 + PI * 2. * .1);
-	if (gTimeMod > 9.) {
+	if (gTimeMod >= 9.) {
 		p.xy *= rot2(PI * 2. * .1 * clamp(gTimeMod - 9., 0., 1.));
 	}
 	//p.zy *= rot2(tt);
@@ -296,7 +296,11 @@ vec3 colorHit(vec4 result, vec3 rd)
 	float diffuse = max(0., dot(normal, -rd));
 	float fresnel = pow(1. + dot(normal, rd), 4.);
 	float specular = pow(max(dot(reflect(rd, normal), -rd), 0.), 30.);
-	float ambientOcc = clamp(map(gHitPosition + normal * .05).x / .05, 0., 1.);
+
+	// we could not do ambient occlusion and save map() call for more performance
+	//float ambientOcc = clamp(map(gHitPosition + normal * .05).x / .05, 0., 1.);
+	float ambientOcc = .9; // .9 on purpose, because it's brighter and looks slighty better
+
 	float scat = smoothstep(0., 1., map(gHitPosition - rd * .4).x / .4); // "sub surface scattering"
 	shade = mix(specular + shade * (ambientOcc + .2) * (diffuse + scat * .1), shade, fresnel);
 	//shade = mix(background, shade, exp(-.002 * result.y * result.y * result.y));
@@ -360,6 +364,7 @@ void main()
 			}
 		}
 	}
+
 	gCurrentMovement = -1;
 	gCurrentMovementProgress = 0.;
 	for (i = 0; gTimeMod <= 9. && i < gNumMovements; i++) {
