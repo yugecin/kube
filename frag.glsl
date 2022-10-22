@@ -1,9 +1,9 @@
 // vi: syntax=c
 #version 430
 #define shadertoy 0
+#define debugmov 0 //noexport
 #if shadertoy == 0
 #define iTime fpar[0].x
-#define debugmov 0 //noexport
 layout (location=0) uniform vec4 fpar[2];
 layout (location=2) uniform vec4 debug[2]; //noexport
 #endif
@@ -17,16 +17,7 @@ layout (location=2) uniform vec4 debug[2]; //noexport
 #define WHI 5
 #define ORG 6
 #define SHA 7
-const vec3[] COLORS = {
-	vec3(.03),
-	vec3(1, 0, 0),
-	vec3(0, 0, 1),
-	vec3(0, 1, 0),
-	vec3(1, 1, 0),
-	vec3(1),
-	vec3(1., .3, .0),
-	vec3(.9, .9, .8),
-};
+vec3 COLORS[8];
 int i;
 float gRounding, gSide, gUnit, gOffsetStuff;
 const float ROUNDING = 2.5;
@@ -36,17 +27,9 @@ const float SPACING = UNIT;
 const vec3 off = vec3(0, SPACING, -SPACING);
 const vec4 rot = vec4(0, HALFPI, -HALFPI, PI);
 vec3 gHitPosition = vec3(0);
-const vec3[] gCubeOff = {
-	off.zyz, off.xyz, off.yyz, off.zxz, off.xxz, off.yxz, off.zzz, off.xzz, off.yzz,
-	off.zyx, off.xyx, off.yyx, off.zxx, off.yxx, off.zzx, off.xzx, off.yzx, off.zyy,
-	off.xyy, off.yyy, off.zxy, off.xxy, off.yxy, off.zzy, off.xzy, off.yzy,
-};
-const vec3[] gCubeRot = {
-	rot.yxx, rot.xxx, rot.xxx, rot.yxx, rot.xxx, rot.zxx, rot.wxx, rot.wxx, rot.zxx,
-	rot.xxz, rot.xyx, rot.zxz, rot.yyx, rot.zyx, rot.yxz, rot.xzx, rot.wxz, rot.yyx,
-	rot.xyx, rot.xyx, rot.yyx, rot.xwx, rot.zyx, rot.wyx, rot.xwx, rot.xwx,
-};
-int gCubeCol[3][26];
+vec3 gCubeOff[26];
+vec3 gCubeRot[26];
+int gCubeCol0[26], gCubeCol1[26], gCubeCol2[26];
 float gCubeOpacity[26];
 bool gCubeHidden[26];
 int gHitIndex = 0;
@@ -59,43 +42,13 @@ int gExclusiveCube = -1; // if set, only that cube will be considered.
 #define D 8 // down
 #define B 10 // back
 const int gNumMovements = 12;
-const int[] gMovements = {
-	F, F, B, B, L, L, R, R, U, U, D, D
-};
+int gMovements[gNumMovements];
 int gCurrentMovement;
-float gCurrentMovementProgress;
+float gCurrentMovementProgress = 0.;
 const float MOVEMENT_TIME_SECONDS = .3;
 const float HIDE_TIME_SECONDS = .2;
 const float FADE_TIME_SECONDS = .4;
-const int[] gCubeHiddenOrder = {
-    9,
-    5,
-    25,
-    24,
-    17,
-    11,
-    3,
-    6,
-    8,
-    2,
-    14,
-    19,
-    1,
-    20,
-    22,
-    16,
-    23,
-    7,
-    18,
-    //
-    4,
-    10,
-    12,
-    13,
-    15,
-    21,
-    //0,
-};
+int gCubeHiddenOrder[25];
 bool gHackFadeStuff;
 bool gShaft;
 float gTimeMod;
@@ -107,7 +60,7 @@ vec2 oneSidedCube(vec3 p, int cubeIndex)
 	vec2 mc = vec2(length(max(abs(p) - gSide, 0.)) - gRounding, 0);
 	float tc = length(max(abs(p + vec3(0., 0., gRounding + .02)) - gSide, 0.));
 
-	return mc.x < tc ? mc : vec2(tc, float(gCubeCol[0][cubeIndex]));
+	return mc.x < tc ? mc : vec2(tc, float(gCubeCol0[cubeIndex]));
 }
 
 vec2 twoSidedCube(vec3 p, int cubeIndex)
@@ -115,7 +68,7 @@ vec2 twoSidedCube(vec3 p, int cubeIndex)
 	vec2 mc = oneSidedCube(p, cubeIndex);
 	float fc = length(max(abs(p + vec3(0, -gRounding - .02, 0.)) - gSide, 0.));
 
-	return mc.x < fc ? mc : vec2(fc, float(gCubeCol[1][cubeIndex]));
+	return mc.x < fc ? mc : vec2(fc, float(gCubeCol1[cubeIndex]));
 }
 
 // also includes the shaft
@@ -141,7 +94,7 @@ vec2 cornerCube(vec3 p, int cubeIndex)
 	vec2 mc = twoSidedCube(p, cubeIndex);
 	float sc = length(max(abs(p + vec3(-gRounding - .02, 0., 0.)) - gSide, 0.));
 
-	if (sc < mc.x) mc = vec2(sc, float(gCubeCol[2][cubeIndex]));
+	if (sc < mc.x) mc = vec2(sc, float(gCubeCol2[cubeIndex]));
 	vec3 cubepos = p + vec3(9., 9., -9.);
 	float bit = max(length(max(abs(cubepos) - vec3(7.), 0.)), length(p+vec3(gUnit,gUnit,-gUnit))-gUnit*1.18);
 	mc.x = min(mc.x, bit);
@@ -150,7 +103,7 @@ vec2 cornerCube(vec3 p, int cubeIndex)
 
 vec2 map(vec3 p)
 {
-	float tt = clamp(gTimeMod / 9., 0., 1.) * PI * 2;
+	float tt = clamp(gTimeMod / 9., 0., 1.) * PI * 2.;
 	p.xy *= rot2(tt * .9 + PI * 2. * .1);
 	if (gTimeMod >= 9.) {
 		p.xy *= rot2(PI * 2. * .1 * clamp(gTimeMod - 9., 0., 1.));
@@ -225,10 +178,10 @@ vec2 map(vec3 p)
 		pa.xy *= rot2(gCubeRot[i].x);
 		pa.yz *= rot2(gCubeRot[i].y);
 		pa.xz *= rot2(gCubeRot[i].z);
-		if (gCubeCol[1][i] == _x_) {
+		if (gCubeCol1[i] == _x_) {
 			float boundingbox = length(max(abs(pa - vec3(0., 0., gUnit * .36)) - vec3(gUnit * .55, gUnit * .55, gUnit * .9), 0.));
 			cub = boundingbox < .1 ? centerCube(pa, i) : vec2(boundingbox, 0.);
-		} else if (gCubeCol[2][i] == _x_) {
+		} else if (gCubeCol2[i] == _x_) {
 			float boundingbox = length(max(abs(pa) - vec3(gUnit * .7), 0.));
 			cub = boundingbox < .1 ? middleCube(pa, i) : vec2(boundingbox, 0.);
 		} else {
@@ -309,33 +262,131 @@ in vec2 v;
 void main()
 #endif
 {
+	gMovements[0] = F;
+	gMovements[1] = F;
+	gMovements[2] = B;
+	gMovements[3] = B;
+	gMovements[4] = L;
+	gMovements[5] = L;
+	gMovements[6] = R;
+	gMovements[7] = R;
+	gMovements[8] = U;
+	gMovements[9] = U;
+	gMovements[10] = D;
+	gMovements[11] = D;
+	COLORS[0] = vec3(.03);
+	COLORS[1] = vec3(1, 0, 0);
+	COLORS[2] = vec3(0, 0, 1);
+	COLORS[3] = vec3(0, 1, 0);
+	COLORS[4] = vec3(1, 1, 0);
+	COLORS[5] = vec3(1);
+	COLORS[6] = vec3(1., .3, .0);
+	COLORS[7] = vec3(.9, .9, .8);
+	gCubeOff[ 0] = off.zyz;
+	gCubeOff[ 1] = off.xyz;
+	gCubeOff[ 2] = off.yyz;
+	gCubeOff[ 3] = off.zxz;
+	gCubeOff[ 4] = off.xxz;
+	gCubeOff[ 5] = off.yxz;
+	gCubeOff[ 6] = off.zzz;
+	gCubeOff[ 7] = off.xzz;
+	gCubeOff[ 8] = off.yzz;
+	gCubeOff[ 9] = off.zyx;
+	gCubeOff[10] = off.xyx;
+	gCubeOff[11] = off.yyx;
+	gCubeOff[12] = off.zxx;
+	gCubeOff[13] = off.yxx;
+	gCubeOff[14] = off.zzx;
+	gCubeOff[15] = off.xzx;
+	gCubeOff[16] = off.yzx;
+	gCubeOff[17] = off.zyy;
+	gCubeOff[18] = off.xyy;
+	gCubeOff[19] = off.yyy;
+	gCubeOff[20] = off.zxy;
+	gCubeOff[21] = off.xxy;
+	gCubeOff[22] = off.yxy;
+	gCubeOff[23] = off.zzy;
+	gCubeOff[24] = off.xzy;
+	gCubeOff[25] = off.yzy;
+	gCubeRot[ 0] = rot.yxx;
+	gCubeRot[ 1] = rot.xxx;
+	gCubeRot[ 2] = rot.xxx;
+	gCubeRot[ 3] = rot.yxx;
+	gCubeRot[ 4] = rot.xxx;
+	gCubeRot[ 5] = rot.zxx;
+	gCubeRot[ 6] = rot.wxx;
+	gCubeRot[ 7] = rot.wxx;
+	gCubeRot[ 8] = rot.zxx;
+	gCubeRot[ 9] = rot.xxz;
+	gCubeRot[10] = rot.xyx;
+	gCubeRot[11] = rot.zxz;
+	gCubeRot[12] = rot.yyx;
+	gCubeRot[13] = rot.zyx;
+	gCubeRot[14] = rot.yxz;
+	gCubeRot[15] = rot.xzx;
+	gCubeRot[16] = rot.wxz;
+	gCubeRot[17] = rot.yyx;
+	gCubeRot[18] = rot.xyx;
+	gCubeRot[19] = rot.xyx;
+	gCubeRot[20] = rot.yyx;
+	gCubeRot[21] = rot.xwx;
+	gCubeRot[22] = rot.zyx;
+	gCubeRot[23] = rot.wyx;
+	gCubeRot[24] = rot.xwx;
+	gCubeRot[25] = rot.xwx;
+	gCubeHiddenOrder[ 0] = 9;
+	gCubeHiddenOrder[ 1] = 5;
+	gCubeHiddenOrder[ 2] = 25;
+	gCubeHiddenOrder[ 3] = 24;
+	gCubeHiddenOrder[ 4] = 17;
+	gCubeHiddenOrder[ 5] = 11;
+	gCubeHiddenOrder[ 6] = 3;
+	gCubeHiddenOrder[ 7] = 6;
+	gCubeHiddenOrder[ 8] = 8;
+	gCubeHiddenOrder[ 9] = 2;
+	gCubeHiddenOrder[10] = 14;
+	gCubeHiddenOrder[11] = 19;
+	gCubeHiddenOrder[12] = 1;
+	gCubeHiddenOrder[13] = 20;
+	gCubeHiddenOrder[14] = 22;
+	gCubeHiddenOrder[15] = 16;
+	gCubeHiddenOrder[16] = 23;
+	gCubeHiddenOrder[17] = 7;
+	gCubeHiddenOrder[18] = 18;
+	gCubeHiddenOrder[19] = 4;
+	gCubeHiddenOrder[20] = 10;
+	gCubeHiddenOrder[21] = 12;
+	gCubeHiddenOrder[22] = 13;
+	gCubeHiddenOrder[23] = 15;
+	gCubeHiddenOrder[24] = 21;
+	//0,
 	gTimeMod = mod(iTime, 10.);
-	gCubeCol[0][ 0] = RED; gCubeCol[1][ 0] = YLW; gCubeCol[2][ 0] = BLU;
-	gCubeCol[0][ 1] = RED; gCubeCol[1][ 1] = BLU; gCubeCol[2][ 1] = _x_;
-	gCubeCol[0][ 2] = RED; gCubeCol[1][ 2] = BLU; gCubeCol[2][ 2] = WHI;
-	gCubeCol[0][ 3] = RED; gCubeCol[1][ 3] = YLW; gCubeCol[2][ 3] = _x_;
-	gCubeCol[0][ 4] = RED; gCubeCol[1][ 4] = _x_; gCubeCol[2][ 4] = _x_;
-	gCubeCol[0][ 5] = RED; gCubeCol[1][ 5] = WHI; gCubeCol[2][ 5] = _x_;
-	gCubeCol[0][ 6] = RED; gCubeCol[1][ 6] = GRN; gCubeCol[2][ 6] = YLW;
-	gCubeCol[0][ 7] = RED; gCubeCol[1][ 7] = GRN; gCubeCol[2][ 7] = _x_;
-	gCubeCol[0][ 8] = RED; gCubeCol[1][ 8] = WHI; gCubeCol[2][ 8] = GRN;
-	gCubeCol[0][ 9] = YLW; gCubeCol[1][ 9] = BLU; gCubeCol[2][ 9] = _x_;
-	gCubeCol[0][10] = BLU; gCubeCol[1][10] = _x_; gCubeCol[2][10] = _x_;
-	gCubeCol[0][11] = BLU; gCubeCol[1][11] = WHI; gCubeCol[2][11] = _x_;
-	gCubeCol[0][12] = YLW; gCubeCol[1][12] = _x_; gCubeCol[2][12] = _x_;
-	gCubeCol[0][13] = WHI; gCubeCol[1][13] = _x_; gCubeCol[2][13] = _x_;
-	gCubeCol[0][14] = GRN; gCubeCol[1][14] = YLW; gCubeCol[2][14] = _x_;
-	gCubeCol[0][15] = GRN; gCubeCol[1][15] = _x_; gCubeCol[2][15] = _x_;
-	gCubeCol[0][16] = WHI; gCubeCol[1][16] = GRN; gCubeCol[2][16] = _x_;
-	gCubeCol[0][17] = YLW; gCubeCol[1][17] = ORG; gCubeCol[2][17] = BLU;
-	gCubeCol[0][18] = BLU; gCubeCol[1][18] = ORG; gCubeCol[2][18] = _x_;
-	gCubeCol[0][19] = BLU; gCubeCol[1][19] = ORG; gCubeCol[2][19] = WHI;
-	gCubeCol[0][20] = YLW; gCubeCol[1][20] = ORG; gCubeCol[2][20] = _x_;
-	gCubeCol[0][21] = ORG; gCubeCol[1][21] = _x_; gCubeCol[2][21] = _x_;
-	gCubeCol[0][22] = WHI; gCubeCol[1][22] = ORG; gCubeCol[2][22] = _x_;
-	gCubeCol[0][23] = GRN; gCubeCol[1][23] = ORG; gCubeCol[2][23] = YLW;
-	gCubeCol[0][24] = ORG; gCubeCol[1][24] = GRN; gCubeCol[2][24] = _x_;
-	gCubeCol[0][25] = ORG; gCubeCol[1][25] = GRN; gCubeCol[2][25] = WHI;
+	gCubeCol0[ 0] = RED; gCubeCol1[ 0] = YLW; gCubeCol2[ 0] = BLU;
+	gCubeCol0[ 1] = RED; gCubeCol1[ 1] = BLU; gCubeCol2[ 1] = _x_;
+	gCubeCol0[ 2] = RED; gCubeCol1[ 2] = BLU; gCubeCol2[ 2] = WHI;
+	gCubeCol0[ 3] = RED; gCubeCol1[ 3] = YLW; gCubeCol2[ 3] = _x_;
+	gCubeCol0[ 4] = RED; gCubeCol1[ 4] = _x_; gCubeCol2[ 4] = _x_;
+	gCubeCol0[ 5] = RED; gCubeCol1[ 5] = WHI; gCubeCol2[ 5] = _x_;
+	gCubeCol0[ 6] = RED; gCubeCol1[ 6] = GRN; gCubeCol2[ 6] = YLW;
+	gCubeCol0[ 7] = RED; gCubeCol1[ 7] = GRN; gCubeCol2[ 7] = _x_;
+	gCubeCol0[ 8] = RED; gCubeCol1[ 8] = WHI; gCubeCol2[ 8] = GRN;
+	gCubeCol0[ 9] = YLW; gCubeCol1[ 9] = BLU; gCubeCol2[ 9] = _x_;
+	gCubeCol0[10] = BLU; gCubeCol1[10] = _x_; gCubeCol2[10] = _x_;
+	gCubeCol0[11] = BLU; gCubeCol1[11] = WHI; gCubeCol2[11] = _x_;
+	gCubeCol0[12] = YLW; gCubeCol1[12] = _x_; gCubeCol2[12] = _x_;
+	gCubeCol0[13] = WHI; gCubeCol1[13] = _x_; gCubeCol2[13] = _x_;
+	gCubeCol0[14] = GRN; gCubeCol1[14] = YLW; gCubeCol2[14] = _x_;
+	gCubeCol0[15] = GRN; gCubeCol1[15] = _x_; gCubeCol2[15] = _x_;
+	gCubeCol0[16] = WHI; gCubeCol1[16] = GRN; gCubeCol2[16] = _x_;
+	gCubeCol0[17] = YLW; gCubeCol1[17] = ORG; gCubeCol2[17] = BLU;
+	gCubeCol0[18] = BLU; gCubeCol1[18] = ORG; gCubeCol2[18] = _x_;
+	gCubeCol0[19] = BLU; gCubeCol1[19] = ORG; gCubeCol2[19] = WHI;
+	gCubeCol0[20] = YLW; gCubeCol1[20] = ORG; gCubeCol2[20] = _x_;
+	gCubeCol0[21] = ORG; gCubeCol1[21] = _x_; gCubeCol2[21] = _x_;
+	gCubeCol0[22] = WHI; gCubeCol1[22] = ORG; gCubeCol2[22] = _x_;
+	gCubeCol0[23] = GRN; gCubeCol1[23] = ORG; gCubeCol2[23] = YLW;
+	gCubeCol0[24] = ORG; gCubeCol1[24] = GRN; gCubeCol2[24] = _x_;
+	gCubeCol0[25] = ORG; gCubeCol1[25] = GRN; gCubeCol2[25] = WHI;
 	gCubeHidden[0] = false;
 	gCubeOpacity[0] = 1.;
 	gHackFadeStuff = false;
@@ -344,7 +395,7 @@ void main()
 		gCubeOpacity[index] = 1.;
 		float time = gTimeMod >= 9. ? 0. : gTimeMod;
 		int whatever = i >= 19 ? 21 : i + 1;
-		float until = gNumMovements * MOVEMENT_TIME_SECONDS + float(whatever) * HIDE_TIME_SECONDS;
+		float until = float(gNumMovements) * MOVEMENT_TIME_SECONDS + float(whatever) * HIDE_TIME_SECONDS;
 		if (float(until) < time) {
 			gCubeHidden[index] = true;
 		} else {
@@ -364,49 +415,52 @@ void main()
 		float until = float(i + 1) * MOVEMENT_TIME_SECONDS;
 		if (float(until) < gTimeMod) {
 			int tmp;
-#define swap(a,b,c,d,e,f,g,h) tmp=gCubeCol[a][b];gCubeCol[a][b]=gCubeCol[c][d];gCubeCol[c][d]=gCubeCol[e][f];gCubeCol[e][f]=gCubeCol[g][h];gCubeCol[g][h]=tmp;
+#define _0 gCubeCol0
+#define _1 gCubeCol1
+#define _2 gCubeCol2
+#define swap(a,b,c,d,e,f,g,h) tmp=a[b];a[b]=c[d];c[d]=e[f];e[f]=g[h];g[h]=tmp;
 			switch (gMovements[i]) {
 			case F:
-				swap(0, 2, 1, 0, 1, 17, 2, 19);
-				swap(1, 11, 0, 1, 0, 9, 1, 18);
-				swap(1, 19, 2, 2, 0, 0, 0, 17);
-				swap(1, 2, 2, 0, 2, 17, 0, 19);
-				swap(1, 1, 1, 9, 0, 18, 0, 11);
+				swap(_0, 2, _1, 0, _1, 17, _2, 19);
+				swap(_1, 11, _0, 1, _0, 9, _1, 18);
+				swap(_1, 19, _2, 2, _0, 0, _0, 17);
+				swap(_1, 2, _2, 0, _2, 17, _0, 19);
+				swap(_1, 1, _1, 9, _0, 18, _0, 11);
 				break;
 			case L:
-				swap(0, 0, 1, 6, 1, 23, 2, 17);
-				swap(2, 0, 0, 6, 0, 23, 1, 17);
-				swap(1, 9, 0, 3, 0, 14, 1, 20);
-				swap(2, 6, 2, 23, 0, 17, 1, 0);
-				swap(1, 3, 1, 14, 0, 20, 0, 9);
+				swap(_0, 0, _1, 6, _1, 23, _2, 17);
+				swap(_2, 0, _0, 6, _0, 23, _1, 17);
+				swap(_1, 9, _0, 3, _0, 14, _1, 20);
+				swap(_2, 6, _2, 23, _0, 17, _1, 0);
+				swap(_1, 3, _1, 14, _0, 20, _0, 9);
 				break;
 			case R:
-				swap(0, 2, 0, 19, 0, 25, 2, 8);
-				swap(1, 25, 0, 8, 1, 2, 1, 19);
-				swap(0, 5, 0, 11, 1, 22, 1, 16);
-				swap(2, 2, 2, 19, 2, 25, 1, 8);
-				swap(1, 5, 1, 11, 0, 22, 0, 16);
+				swap(_0, 2, _0, 19, _0, 25, _2, 8);
+				swap(_1, 25, _0, 8, _1, 2, _1, 19);
+				swap(_0, 5, _0, 11, _1, 22, _1, 16);
+				swap(_2, 2, _2, 19, _2, 25, _1, 8);
+				swap(_1, 5, _1, 11, _0, 22, _0, 16);
 				break;
 			case B:
-				swap(0, 8, 2, 25, 1, 23, 2, 6);
-				swap(0, 6, 1, 8, 0, 25, 2, 23);
-				swap(0, 7, 0, 16, 0, 24, 1, 14);
-				swap(2, 8, 1, 25, 0, 23, 1, 6);
-				swap(1, 7, 1, 16, 1, 24, 0, 14);
+				swap(_0, 8, _2, 25, _1, 23, _2, 6);
+				swap(_0, 6, _1, 8, _0, 25, _2, 23);
+				swap(_0, 7, _0, 16, _0, 24, _1, 14);
+				swap(_2, 8, _1, 25, _0, 23, _1, 6);
+				swap(_1, 7, _1, 16, _1, 24, _0, 14);
 				break;
 			case U:
-				swap(1, 6, 1, 0, 1, 2, 1, 8);
-				swap(2, 8, 2, 6, 2, 0, 2, 2);
-				swap(1, 7, 1, 3, 1, 1, 1, 5);
-				swap(0, 6, 0, 0, 0, 2, 0, 8);
-				swap(0, 7, 0, 3, 0, 1, 0, 5);
+				swap(_1, 6, _1, 0, _1, 2, _1, 8);
+				swap(_2, 8, _2, 6, _2, 0, _2, 2);
+				swap(_1, 7, _1, 3, _1, 1, _1, 5);
+				swap(_0, 6, _0, 0, _0, 2, _0, 8);
+				swap(_0, 7, _0, 3, _0, 1, _0, 5);
 				break;
 			case D:
-				swap(2, 17, 2, 23, 1, 25, 2, 19);
-				swap(2, 25, 0, 19, 0, 17, 0, 23);
-				swap(0, 18, 0, 20, 1, 24, 0, 22);
-				swap(1, 17, 1, 23, 0, 25, 1, 19);
-				swap(1, 18, 1, 20, 0, 24, 1, 22);
+				swap(_2, 17, _2, 23, _1, 25, _2, 19);
+				swap(_2, 25, _0, 19, _0, 17, _0, 23);
+				swap(_0, 18, _0, 20, _1, 24, _0, 22);
+				swap(_1, 17, _1, 23, _0, 25, _1, 19);
+				swap(_1, 18, _1, 20, _0, 24, _1, 22);
 				break;
 			}
 		} else {
@@ -416,12 +470,16 @@ void main()
 		}
 	}
 
+#if shadertoy == 1
+	vec2 uv = (v-.5*iResolution.xy)/iResolution.y;
+#else
 	vec2 uv=v;uv.y/=1.77;
+#endif
 
 	vec3 ro = vec3(-80, 80, -70);
 	vec3 at = vec3(0, 0, 10);
 
-#if debugmov //noexport
+#if debugmov == 1 //noexport
 	ro = debug[0].xyz; //noexport
 	float vertAngle = debug[1].y/20.; //noexport
 	float horzAngle = debug[1].x/20.; //noexport
